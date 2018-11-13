@@ -1,4 +1,11 @@
-# crc32fast [![Build Status](https://travis-ci.com/srijs/rust-crc32fast.svg?branch=master)](https://travis-ci.com/srijs/rust-crc32fast)
+# crc32fast [![Build Status][travis-img]][travis] [![Crates.io][crates-img]][crates] [![Documentation][docs-img]][docs]
+
+[travis-img]:   https://travis-ci.com/srijs/rust-crc32fast.svg?branch=master
+[travis]:       https://travis-ci.com/srijs/rust-crc32fast
+[crates-img]:   https://img.shields.io/crates/v/crc32fast.svg
+[crates]:       https://crates.io/crates/crc32fast
+[docs-img]:     https://docs.rs/crc32fast/badge.svg
+[docs]:         https://docs.rs/crc32fast
 
 _Fast CRC32 (IEEE) checksum computation_
 
