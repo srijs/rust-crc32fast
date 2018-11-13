@@ -1,0 +1,16 @@
+[package]
+name = "crc32fast"
+version = "0.1.0"
+authors = ["Sam Rijs <srijs@airpost.net>"]
+
+[build-dependencies]
+rustc_version = "0.2"
+
+[dev-dependencies]
+bencher = "0.1"
+quickcheck = { version = "0.6", default-features = false }
+rand = "0.4"
+
+[[bench]]
+name = "bench"
+harness = false
