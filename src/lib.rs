@@ -1,8 +1,6 @@
 //! ## Example
 //!
 //! ```rust
-//! extern crate crc32fast;
-//!
 //! use crc32fast::Hasher;
 //!
 //! let mut hasher = Hasher::new();
