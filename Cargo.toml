@@ -1,7 +1,12 @@
 [package]
 name = "crc32fast"
-version = "0.1.0"
+version = "1.0.0"
+license = "MIT OR Apache-2.0"
 authors = ["Sam Rijs <srijs@airpost.net>"]
+description = "Fast CRC32 (IEEE) checksum computation"
+repository = "https://github.com/srijs/crc32fast"
+readme = "README.md"
+keywords = ["checksum", "crc", "crc32", "simd", "fast"]
 
 [build-dependencies]
 rustc_version = "0.2"
