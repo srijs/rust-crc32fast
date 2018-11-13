@@ -1,0 +1,14 @@
+language: rust
+sudo: false
+cache:
+  - cargo
+
+matrix:
+  include:
+    - rust: 1.20.0
+    - rust: stable
+    - rust: beta
+    - rust: nightly
+  allow_failures:
+    - rust: nightly
+ 
