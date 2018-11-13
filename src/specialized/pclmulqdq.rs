@@ -276,7 +276,7 @@ impl State {
             return self.partial_fold(len);
         }
 
-        let algn_diff: i64 = 0 - ((src as i64) & 0xF);
+        let algn_diff: u64 = (0 - src as i64) as u64 & 0xF;
         if algn_diff > 0 {
             self.xmm_crc_part = arch::_mm_loadu_si128(src as *const arch::__m128i);
             src = src.add(algn_diff as usize);
