@@ -25,7 +25,7 @@ optimal implementation for the current CPU feature set.
 
 | crate                               | version | variant   | ns/iter | MB/s | 
 |-------------------------------------|---------|-----------|---------|------|
-| [crc](https://crates.io/crates/crc) | 1.0.4   | n/a       |   4,926 |  207 |
+| [crc](https://crates.io/crates/crc) | 1.8.1   | n/a       |   4,926 |  207 |
 | crc32fast (this crate)              | 1.0.0   | baseline  |     683 | 1499 |
 | crc32fast (this crate)              | 1.0.0   | pclmulqdq |     140 | 7314 |
 
