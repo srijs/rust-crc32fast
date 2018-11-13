@@ -474,7 +474,7 @@ static CRC_MASK2: Align16<[u32; 4]> = Align16([0x00000000, 0xFFFFFFFF, 0xFFFFFFF
 mod test {
     quickcheck! {
         fn check_against_baseline(chunks: Vec<Vec<u8>>) -> bool {
-            let mut baseline = super::super::baseline::State::new();
+            let mut baseline = super::super::super::baseline::State::new();
             let mut pclmulqdq = super::State::new().expect("not supported");
             for chunk in chunks {
                 baseline.update(&chunk);
