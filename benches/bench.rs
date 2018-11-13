@@ -24,18 +24,16 @@ fn bench_kilobyte_baseline(b: &mut Bencher) {
     bench(b, 1024, Hasher::internal_new_baseline())
 }
 
-fn bench_kilobyte_pclmulqdq(b: &mut Bencher) {
-    #[cfg(pclmulqdq)]
-    bench(b, 1024, Hasher::internal_new_pclmulqdq().unwrap())
+fn bench_kilobyte_specialized(b: &mut Bencher) {
+    bench(b, 1024, Hasher::internal_new_specialized().unwrap())
 }
 
 fn bench_megabyte_baseline(b: &mut Bencher) {
     bench(b, 1024 * 1024, Hasher::internal_new_baseline())
 }
 
-fn bench_megabyte_pclmulqdq(b: &mut Bencher) {
-    #[cfg(pclmulqdq)]
-    bench(b, 1024 * 1024, Hasher::internal_new_pclmulqdq().unwrap())
+fn bench_megabyte_specialized(b: &mut Bencher) {
+    bench(b, 1024 * 1024, Hasher::internal_new_specialized().unwrap())
 }
 
 benchmark_group!(
@@ -44,8 +42,8 @@ benchmark_group!(
     bench_megabyte_baseline
 );
 benchmark_group!(
-    bench_pclmulqdq,
-    bench_kilobyte_pclmulqdq,
-    bench_megabyte_pclmulqdq
+    bench_specialized,
+    bench_kilobyte_specialized,
+    bench_megabyte_specialized
 );
-benchmark_main!(bench_baseline, bench_pclmulqdq);
+benchmark_main!(bench_baseline, bench_specialized);

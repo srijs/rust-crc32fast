@@ -5,16 +5,14 @@ extern crate quickcheck;
 use std::fmt;
 use std::hash;
 
-mod baseline;
-#[cfg(pclmulqdq)]
-mod pclmulqdq;
 mod table;
+mod baseline;
+mod specialized;
 
 #[derive(Clone)]
 enum State {
     Baseline(baseline::State),
-    #[cfg(pclmulqdq)]
-    Pclmulqdq(pclmulqdq::State),
+    Specialized(specialized::State),
 }
 
 #[derive(Clone)]
@@ -24,7 +22,7 @@ pub struct Hasher {
 
 impl Hasher {
     pub fn new() -> Self {
-        Self::internal_new_pclmulqdq().unwrap_or_else(|| Self::internal_new_baseline())
+        Self::internal_new_specialized().unwrap_or_else(|| Self::internal_new_baseline())
     }
 
     #[doc(hidden)]
@@ -35,12 +33,11 @@ impl Hasher {
     }
 
     #[doc(hidden)]
-    pub fn internal_new_pclmulqdq() -> Option<Self> {
-        #[cfg(pclmulqdq)]
+    pub fn internal_new_specialized() -> Option<Self> {
         {
-            if let Some(state) = pclmulqdq::State::new() {
+            if let Some(state) = specialized::State::new() {
                 return Some(Hasher {
-                    state: State::Pclmulqdq(state),
+                    state: State::Specialized(state),
                 });
             }
         }
@@ -50,16 +47,14 @@ impl Hasher {
     pub fn update(&mut self, buf: &[u8]) {
         match self.state {
             State::Baseline(ref mut state) => state.update(buf),
-            #[cfg(pclmulqdq)]
-            State::Pclmulqdq(ref mut state) => state.update(buf),
+            State::Specialized(ref mut state) => state.update(buf),
         }
     }
 
     pub fn finalize(self) -> u32 {
         match self.state {
             State::Baseline(state) => state.finalize(),
-            #[cfg(pclmulqdq)]
-            State::Pclmulqdq(state) => state.finalize(),
+            State::Specialized(state) => state.finalize(),
         }
     }
 }
