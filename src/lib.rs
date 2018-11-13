@@ -5,9 +5,9 @@ extern crate quickcheck;
 use std::fmt;
 use std::hash;
 
-mod table;
 mod baseline;
 mod specialized;
+mod table;
 
 #[derive(Clone)]
 enum State {
