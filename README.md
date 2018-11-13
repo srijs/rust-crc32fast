@@ -1,4 +1,6 @@
-# Fast CRC32 (IEEE) checksum computation
+# crc32fast [![Build Status](https://travis-ci.com/srijs/rust-crc32fast.svg?branch=master)](https://travis-ci.com/srijs/rust-crc32fast)
+
+_Fast CRC32 (IEEE) checksum computation_
 
 ## Usage
 
