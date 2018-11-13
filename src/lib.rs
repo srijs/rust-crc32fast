@@ -1,3 +1,27 @@
+//! ## Example
+//!
+//! ```rust
+//! extern crate crc32fast;
+//!
+//! use crc32fast::Hasher;
+//!
+//! let mut hasher = Hasher::new();
+//! hasher.update(b"foo bar baz");
+//! let checksum = hasher.finalize();
+//! ```
+//!
+//! ## Performance
+//!
+//! This crate contains multiple CRC32 implementations:
+//!
+//! - A fast baseline implementation which processes up to 16 bytes per iteration
+//! - An optimized implementation for modern `x86` using `sse` and `pclmulqdq` instructions
+//!
+//! Calling the `Hasher::new` constructor at runtime will perform a feature detection to select the most
+//! optimal implementation for the current CPU feature set.
+
+#[deny(missing_docs)]
+
 #[cfg(test)]
 #[macro_use]
 extern crate quickcheck;
@@ -16,16 +40,22 @@ enum State {
 }
 
 #[derive(Clone)]
+/// Represents an in-progress CRC32 computation.
 pub struct Hasher {
     state: State,
 }
 
 impl Hasher {
+    /// Create a new `Hasher`.
+    ///
+    /// This will perform a CPU feature detection at runtime to select the most
+    /// optimal implementation for the current processor architecture.
     pub fn new() -> Self {
         Self::internal_new_specialized().unwrap_or_else(|| Self::internal_new_baseline())
     }
 
     #[doc(hidden)]
+    // Internal-only API. Don't use.
     pub fn internal_new_baseline() -> Self {
         Hasher {
             state: State::Baseline(baseline::State::new()),
@@ -33,6 +63,7 @@ impl Hasher {
     }
 
     #[doc(hidden)]
+    // Internal-only API. Don't use.
     pub fn internal_new_specialized() -> Option<Self> {
         {
             if let Some(state) = specialized::State::new() {
@@ -44,6 +75,7 @@ impl Hasher {
         None
     }
 
+    /// Process the given byte slice and update the hash state.
     pub fn update(&mut self, buf: &[u8]) {
         match self.state {
             State::Baseline(ref mut state) => state.update(buf),
@@ -51,6 +83,7 @@ impl Hasher {
         }
     }
 
+    /// Finalize the hash state and return the computed CRC32 value.
     pub fn finalize(self) -> u32 {
         match self.state {
             State::Baseline(state) => state.finalize(),
