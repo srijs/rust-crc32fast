@@ -473,12 +473,19 @@ static CRC_MASK2: Align16<[u32; 4]> = Align16([0x00000000, 0xFFFFFFFF, 0xFFFFFFF
 #[cfg(test)]
 mod test {
     quickcheck! {
-        fn check_against_baseline(chunks: Vec<Vec<u8>>) -> bool {
+        fn check_against_baseline(chunks: Vec<(Vec<u8>, usize)>) -> bool {
             let mut baseline = super::super::super::baseline::State::new();
             let mut pclmulqdq = super::State::new().expect("not supported");
-            for chunk in chunks {
-                baseline.update(&chunk);
-                pclmulqdq.update(&chunk);
+            for (chunk, mut offset) in chunks {
+                // simulate random alignments by offsetting the slice by up to 15 bytes
+                offset = offset & 0xF;
+                if chunk.len() <= offset {
+                    baseline.update(&chunk);
+                    pclmulqdq.update(&chunk);
+                } else {
+                    baseline.update(&chunk[offset..]);
+                    pclmulqdq.update(&chunk[offset..]);
+                }
             }
             pclmulqdq.finalize() == baseline.finalize()
         }
