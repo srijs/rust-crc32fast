@@ -4,7 +4,7 @@ version = "1.0.1"
 license = "MIT OR Apache-2.0"
 authors = ["Sam Rijs <srijs@airpost.net>"]
 description = "Fast CRC32 (IEEE) checksum computation"
-repository = "https://github.com/srijs/crc32fast"
+repository = "https://github.com/srijs/rust-crc32fast"
 readme = "README.md"
 keywords = ["checksum", "crc", "crc32", "simd", "fast"]
 
