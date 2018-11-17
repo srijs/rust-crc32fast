@@ -14,11 +14,11 @@ pub struct State {
 
 impl State {
     pub fn new() -> Option<Self> {
-        if std::is_x86_feature_detected!("pclmulqdq")
-            && std::is_x86_feature_detected!("sse")
-            && std::is_x86_feature_detected!("sse2")
-            && std::is_x86_feature_detected!("ssse3")
-            && std::is_x86_feature_detected!("sse4.1")
+        if is_x86_feature_detected!("pclmulqdq")
+            && is_x86_feature_detected!("sse")
+            && is_x86_feature_detected!("sse2")
+            && is_x86_feature_detected!("ssse3")
+            && is_x86_feature_detected!("sse4.1")
         {
             // SAFETY: The conditions above ensure that all
             //         required instructions are supported by the CPU.
@@ -42,7 +42,7 @@ impl State {
 
     #[target_feature(enable = "sse2")]
     unsafe fn init() -> Self {
-        debug_assert!(std::is_x86_feature_detected!("sse2"));
+        debug_assert!(is_x86_feature_detected!("sse2"));
 
         State {
             xmm_crc0: arch::_mm_cvtsi32_si128(0x9db42487u32 as i32),
@@ -55,9 +55,9 @@ impl State {
 
     #[target_feature(enable = "sse", enable = "sse2", enable = "pclmulqdq")]
     unsafe fn fold_1(&mut self) {
-        debug_assert!(std::is_x86_feature_detected!("sse"));
-        debug_assert!(std::is_x86_feature_detected!("sse2"));
-        debug_assert!(std::is_x86_feature_detected!("pclmulqdq"));
+        debug_assert!(is_x86_feature_detected!("sse"));
+        debug_assert!(is_x86_feature_detected!("sse2"));
+        debug_assert!(is_x86_feature_detected!("pclmulqdq"));
 
         let xmm_fold4 =
             arch::_mm_set_epi32(0x00000001, 0x54442bd4, 0x00000001, 0xc6e41596u32 as i32);
@@ -79,9 +79,9 @@ impl State {
 
     #[target_feature(enable = "sse", enable = "sse2", enable = "pclmulqdq")]
     unsafe fn fold_2(&mut self) {
-        debug_assert!(std::is_x86_feature_detected!("sse"));
-        debug_assert!(std::is_x86_feature_detected!("sse2"));
-        debug_assert!(std::is_x86_feature_detected!("pclmulqdq"));
+        debug_assert!(is_x86_feature_detected!("sse"));
+        debug_assert!(is_x86_feature_detected!("sse2"));
+        debug_assert!(is_x86_feature_detected!("pclmulqdq"));
 
         let xmm_fold4 =
             arch::_mm_set_epi32(0x00000001, 0x54442bd4, 0x00000001, 0xc6e41596u32 as i32);
@@ -111,9 +111,9 @@ impl State {
 
     #[target_feature(enable = "sse", enable = "sse2", enable = "pclmulqdq")]
     unsafe fn fold_3(&mut self) {
-        debug_assert!(std::is_x86_feature_detected!("sse"));
-        debug_assert!(std::is_x86_feature_detected!("sse2"));
-        debug_assert!(std::is_x86_feature_detected!("pclmulqdq"));
+        debug_assert!(is_x86_feature_detected!("sse"));
+        debug_assert!(is_x86_feature_detected!("sse2"));
+        debug_assert!(is_x86_feature_detected!("pclmulqdq"));
 
         let xmm_fold4 =
             arch::_mm_set_epi32(0x00000001, 0x54442bd4, 0x00000001, 0xc6e41596u32 as i32);
@@ -149,9 +149,9 @@ impl State {
 
     #[target_feature(enable = "sse", enable = "sse2", enable = "pclmulqdq")]
     unsafe fn fold_4(&mut self) {
-        debug_assert!(std::is_x86_feature_detected!("sse"));
-        debug_assert!(std::is_x86_feature_detected!("sse2"));
-        debug_assert!(std::is_x86_feature_detected!("pclmulqdq"));
+        debug_assert!(is_x86_feature_detected!("sse"));
+        debug_assert!(is_x86_feature_detected!("sse2"));
+        debug_assert!(is_x86_feature_detected!("pclmulqdq"));
 
         let xmm_fold4 =
             arch::_mm_set_epi32(0x00000001, 0x54442bd4, 0x00000001, 0xc6e41596u32 as i32);
@@ -198,10 +198,10 @@ impl State {
         enable = "pclmulqdq"
     )]
     unsafe fn partial_fold(&mut self, len: usize) {
-        debug_assert!(std::is_x86_feature_detected!("sse"));
-        debug_assert!(std::is_x86_feature_detected!("sse2"));
-        debug_assert!(std::is_x86_feature_detected!("ssse3"));
-        debug_assert!(std::is_x86_feature_detected!("pclmulqdq"));
+        debug_assert!(is_x86_feature_detected!("sse"));
+        debug_assert!(is_x86_feature_detected!("sse2"));
+        debug_assert!(is_x86_feature_detected!("ssse3"));
+        debug_assert!(is_x86_feature_detected!("pclmulqdq"));
 
         let pshufb_shf_table = PSHUFB_SHF_TABLE.0.as_ptr() as *const arch::__m128i;
 
@@ -259,10 +259,10 @@ impl State {
         enable = "pclmulqdq"
     )]
     unsafe fn fold(&mut self, bytes: &[u8]) {
-        debug_assert!(std::is_x86_feature_detected!("sse"));
-        debug_assert!(std::is_x86_feature_detected!("sse2"));
-        debug_assert!(std::is_x86_feature_detected!("ssse3"));
-        debug_assert!(std::is_x86_feature_detected!("pclmulqdq"));
+        debug_assert!(is_x86_feature_detected!("sse"));
+        debug_assert!(is_x86_feature_detected!("sse2"));
+        debug_assert!(is_x86_feature_detected!("ssse3"));
+        debug_assert!(is_x86_feature_detected!("pclmulqdq"));
 
         let mut src = bytes.as_ptr();
         let mut len = bytes.len();
@@ -374,9 +374,9 @@ impl State {
 
     #[target_feature(enable = "sse2", enable = "sse4.1", enable = "pclmulqdq")]
     unsafe fn fold_512to32(&mut self) -> u32 {
-        debug_assert!(std::is_x86_feature_detected!("sse2"));
-        debug_assert!(std::is_x86_feature_detected!("sse4.1"));
-        debug_assert!(std::is_x86_feature_detected!("pclmulqdq"));
+        debug_assert!(is_x86_feature_detected!("sse2"));
+        debug_assert!(is_x86_feature_detected!("sse4.1"));
+        debug_assert!(is_x86_feature_detected!("pclmulqdq"));
 
         let crc_k = CRC_K.0.as_ptr() as *const arch::__m128i;
 
