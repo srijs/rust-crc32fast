@@ -276,17 +276,17 @@ impl State {
             return self.partial_fold(len);
         }
 
-        let algn_diff: u64 = (0 - src as i64) as u64 & 0xF;
+        let algn_diff = compute_16_byte_alignment_difference(src);
         if algn_diff > 0 {
             self.xmm_crc_part = arch::_mm_loadu_si128(src as *const arch::__m128i);
-            src = src.add(algn_diff as usize);
-            len -= algn_diff as usize;
+            src = src.add(algn_diff);
+            len -= algn_diff;
 
             if len == 0 {
                 return;
             }
 
-            self.partial_fold(algn_diff as usize);
+            self.partial_fold(algn_diff);
         }
 
         while len >= 64 {
@@ -470,6 +470,10 @@ static CRC_MASK: Align16<[u32; 4]> = Align16([0xFFFFFFFF, 0xFFFFFFFF, 0x00000000
 
 static CRC_MASK2: Align16<[u32; 4]> = Align16([0x00000000, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF]);
 
+fn compute_16_byte_alignment_difference(ptr: *const u8) -> usize {
+    0usize.wrapping_sub(ptr as usize) & 0xF
+}
+
 #[cfg(test)]
 mod test {
     quickcheck! {
@@ -488,6 +492,13 @@ mod test {
                 }
             }
             pclmulqdq.finalize() == baseline.finalize()
+        }
+    }
+
+    quickcheck! {
+        fn alignment_difference(ptr: usize) -> bool {
+            let diff = super::compute_16_byte_alignment_difference(ptr as *const u8);
+            (ptr + diff) % 16 == 0
         }
     }
 }
