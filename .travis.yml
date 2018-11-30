@@ -41,4 +41,5 @@ script:
         cargo check --tests --target $TARGET
     else
         cargo test --no-fail-fast
+        cargo test --no-fail-fast --release
     fi
