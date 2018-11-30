@@ -19,7 +19,7 @@ impl State {
     }
 }
 
-fn update_fast_16(prev: u32, mut buf: &[u8]) -> u32 {
+pub(crate) fn update_fast_16(prev: u32, mut buf: &[u8]) -> u32 {
     const UNROLL: usize = 4;
     const BYTES_AT_ONCE: usize = 16 * UNROLL;
 
