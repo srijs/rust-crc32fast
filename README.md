@@ -7,7 +7,7 @@
 [docs-img]:     https://docs.rs/crc32fast/badge.svg
 [docs]:         https://docs.rs/crc32fast
 
-_Fast CRC32 (IEEE) checksum computation_
+_Fast, SIMD-accelerated CRC32 (IEEE) checksum computation_
 
 ## Usage
 
@@ -19,7 +19,6 @@ use crc32fast::Hasher;
 let mut hasher = Hasher::new();
 hasher.update(b"foo bar baz");
 let checksum = hasher.finalize();
-
 ```
 
 ## Performance
@@ -32,7 +31,7 @@ This crate contains multiple CRC32 implementations:
 Calling the `Hasher::new` constructor at runtime will perform a feature detection to select the most
 optimal implementation for the current CPU feature set.
 
-| crate                               | version | variant   | ns/iter | MB/s | 
+| crate                               | version | variant   | ns/iter | MB/s |
 |-------------------------------------|---------|-----------|---------|------|
 | [crc](https://crates.io/crates/crc) | 1.8.1   | n/a       |   4,926 |  207 |
 | crc32fast (this crate)              | 1.0.0   | baseline  |     683 | 1499 |
