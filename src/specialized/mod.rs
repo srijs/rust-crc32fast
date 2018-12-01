@@ -24,13 +24,19 @@ impl State {
         None
     }
 
-    pub fn update(&mut self, _buf: &[u8]) {}
-
-    pub fn finalize(self) -> u32 {
-        0
+    pub fn update(&mut self, _buf: &[u8]) {
+        match *self {}
     }
 
-    pub fn reset(&mut self) {}
+    pub fn finalize(self) -> u32 {
+        match self{}
+    }
 
-    pub fn combine(&mut self, _other: u32, _amount: u64) {}
+    pub fn reset(&mut self) {
+        match *self {}
+    }
+
+    pub fn combine(&mut self, _other: u32, _amount: u64) {
+        match *self {}
+    }
 }
