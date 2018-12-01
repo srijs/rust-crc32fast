@@ -11,9 +11,6 @@ repository = "https://github.com/srijs/rust-crc32fast"
 readme = "README.md"
 keywords = ["checksum", "crc", "crc32", "simd", "fast"]
 
-[build-dependencies]
-rustc_version = "0.2"
-
 [dev-dependencies]
 bencher = "0.1"
 quickcheck = { version = "0.6", default-features = false }
