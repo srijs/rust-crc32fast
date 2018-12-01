@@ -5,7 +5,7 @@ use std::arch::x86_64 as arch;
 
 #[derive(Clone)]
 pub struct State {
-    state: u32
+    state: u32,
 }
 
 impl State {
@@ -31,6 +31,14 @@ impl State {
     pub fn finalize(self) -> u32 {
         self.state
     }
+
+    pub fn reset(&mut self) {
+        self.state = 0;
+    }
+
+    pub fn combine(&mut self, other: u32, amount: u64) {
+        self.state = ::combine::combine(self.state, other, amount);
+    }
 }
 
 const K1: i64 = 0x154442bd4;
@@ -45,7 +53,10 @@ const U_PRIME: i64 = 0x1F7011641;
 
 unsafe fn debug(s: &str, a: arch::__m128i) -> arch::__m128i {
     if false {
-        union A { a: arch::__m128i, b: [u8; 16] }
+        union A {
+            a: arch::__m128i,
+            b: [u8; 16],
+        }
         let x = A { a }.b;
         print!(" {:20} | ", s);
         for x in x.iter() {
@@ -53,19 +64,16 @@ unsafe fn debug(s: &str, a: arch::__m128i) -> arch::__m128i {
         }
         println!();
     }
-    return a
+    return a;
 }
 
 #[target_feature(enable = "pclmulqdq", enable = "sse2", enable = "sse4.1")]
-pub unsafe fn calculate(
-    crc: u32,
-    mut data: &[u8],
-) -> u32 {
+pub unsafe fn calculate(crc: u32, mut data: &[u8]) -> u32 {
     // In theory we can accelerate smaller chunks too, but for now just rely on
     // the fallback implementation as it's too much hassle and doesn't seem too
     // beneficial.
     if data.len() < 128 {
-        return ::baseline::update_fast_16(crc, data)
+        return ::baseline::update_fast_16(crc, data);
     }
 
     // Step 1: fold by 4 loop
@@ -170,7 +178,7 @@ unsafe fn get(a: &mut &[u8]) -> arch::__m128i {
     debug_assert!(a.len() >= 16);
     let r = arch::_mm_loadu_si128(a.as_ptr() as *const arch::__m128i);
     *a = &a[16..];
-    return r
+    return r;
 }
 
 #[cfg(test)]

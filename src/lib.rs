@@ -19,7 +19,6 @@
 //! optimal implementation for the current CPU feature set.
 
 #[deny(missing_docs)]
-
 #[cfg(test)]
 #[macro_use]
 extern crate quickcheck;
@@ -28,6 +27,7 @@ use std::fmt;
 use std::hash;
 
 mod baseline;
+mod combine;
 mod specialized;
 mod table;
 
@@ -40,6 +40,7 @@ enum State {
 #[derive(Clone)]
 /// Represents an in-progress CRC32 computation.
 pub struct Hasher {
+    amount: u64,
     state: State,
 }
 
@@ -56,6 +57,7 @@ impl Hasher {
     // Internal-only API. Don't use.
     pub fn internal_new_baseline() -> Self {
         Hasher {
+            amount: 0,
             state: State::Baseline(baseline::State::new()),
         }
     }
@@ -66,6 +68,7 @@ impl Hasher {
         {
             if let Some(state) = specialized::State::new() {
                 return Some(Hasher {
+                    amount: 0,
                     state: State::Specialized(state),
                 });
             }
@@ -75,6 +78,7 @@ impl Hasher {
 
     /// Process the given byte slice and update the hash state.
     pub fn update(&mut self, buf: &[u8]) {
+        self.amount += buf.len() as u64;
         match self.state {
             State::Baseline(ref mut state) => state.update(buf),
             State::Specialized(ref mut state) => state.update(buf),
@@ -86,6 +90,25 @@ impl Hasher {
         match self.state {
             State::Baseline(state) => state.finalize(),
             State::Specialized(state) => state.finalize(),
+        }
+    }
+
+    /// Reset the hash state.
+    pub fn reset(&mut self) {
+        self.amount = 0;
+        match self.state {
+            State::Baseline(ref mut state) => state.reset(),
+            State::Specialized(ref mut state) => state.reset(),
+        }
+    }
+
+    /// Combine the hash state with the hash state for the subsequent block of bytes.
+    pub fn combine(&mut self, other: &Self) {
+        self.amount += other.amount;
+        let other_crc = other.clone().finalize();
+        match self.state {
+            State::Baseline(ref mut state) => state.combine(other_crc, other.amount),
+            State::Specialized(ref mut state) => state.combine(other_crc, other.amount),
         }
     }
 }
@@ -109,5 +132,25 @@ impl hash::Hasher for Hasher {
 
     fn finish(&self) -> u64 {
         self.clone().finalize() as u64
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::Hasher;
+
+    quickcheck! {
+        fn combine(bytes_1: Vec<u8>, bytes_2: Vec<u8>) -> bool {
+            let mut hash_a = Hasher::new();
+            hash_a.update(&bytes_1);
+            hash_a.update(&bytes_2);
+            let mut hash_b = Hasher::new();
+            hash_b.update(&bytes_2);
+            let mut hash_c = Hasher::new();
+            hash_c.update(&bytes_1);
+            hash_c.combine(&hash_b);
+
+            hash_a.finalize() == hash_c.finalize()
+        }
     }
 }

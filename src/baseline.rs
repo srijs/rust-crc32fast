@@ -17,6 +17,14 @@ impl State {
     pub fn finalize(self) -> u32 {
         self.state
     }
+
+    pub fn reset(&mut self) {
+        self.state = 0;
+    }
+
+    pub fn combine(&mut self, other: u32, amount: u64) {
+        self.state = ::combine::combine(self.state, other, amount);
+    }
 }
 
 pub(crate) fn update_fast_16(prev: u32, mut buf: &[u8]) -> u32 {
@@ -51,7 +59,7 @@ pub(crate) fn update_fast_16(prev: u32, mut buf: &[u8]) -> u32 {
     update_slow(!crc, buf)
 }
 
-fn update_slow(prev: u32, buf: &[u8]) -> u32 {
+pub(crate) fn update_slow(prev: u32, buf: &[u8]) -> u32 {
     let mut crc = !prev;
 
     for &byte in buf.iter() {
