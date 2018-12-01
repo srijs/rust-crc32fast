@@ -29,4 +29,8 @@ impl State {
     pub fn finalize(self) -> u32 {
         0
     }
+
+    pub fn reset(&mut self) {}
+
+    pub fn combine(&mut self, _other: u32, _amount: u64) {}
 }
