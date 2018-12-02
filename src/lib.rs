@@ -23,6 +23,9 @@
 #[macro_use]
 extern crate quickcheck;
 
+#[macro_use]
+extern crate cfg_if;
+
 use std::fmt;
 use std::hash;
 
