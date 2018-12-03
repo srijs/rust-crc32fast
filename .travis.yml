@@ -1,5 +1,5 @@
 language: rust
-sudo: false
+services: docker
 cache:
   - cargo
 
@@ -12,10 +12,11 @@ matrix:
     - rust: nightly
     - os: osx
     # Tier 1
-    - env: TARGET=i686-unknown-linux-gnu
+    - env: CROSS_TEST=i686-unknown-linux-gnu
     # Tier 2
-    - env: TARGET=aarch64-unknown-linux-gnu
-    - env: TARGET=wasm32-unknown-unknown
+    - env: CROSS_TEST=aarch64-unknown-linux-gnu
+    - env: CROSS_TEST=powerpc-unknown-linux-gnu
+    - env: CROSS_CHECK=wasm32-unknown-unknown
 
 script:
   - |
@@ -34,11 +35,15 @@ script:
     fi
   - |
     set -e
-    if [[ "$TARGET" ]]
+    if [[ "$CROSS_CHECK" ]]
     then
-        rustup target add $TARGET
-        cargo check --target $TARGET
-        cargo check --tests --target $TARGET
+        rustup target add $CROSS_CHECK
+        cargo check --target $CROSS_CHECK
+        cargo check --tests --target $CROSS_CHECK
+    elif [[ "$CROSS_TEST" ]]
+    then
+        cargo install cross
+        cross test --target=$CROSS_TEST
     else
         cargo test --no-fail-fast
         cargo test --no-fail-fast --release
