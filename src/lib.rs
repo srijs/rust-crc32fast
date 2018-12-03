@@ -18,6 +18,8 @@
 //! Calling the `Hasher::new` constructor at runtime will perform a feature detection to select the most
 //! optimal implementation for the current CPU feature set.
 
+#![cfg_attr(not(feature = "std"), no_std)]
+
 #[deny(missing_docs)]
 #[cfg(test)]
 #[macro_use]
@@ -26,8 +28,11 @@ extern crate quickcheck;
 #[macro_use]
 extern crate cfg_if;
 
-use std::fmt;
-use std::hash;
+#[cfg(feature = "std")]
+use std as core;
+
+use core::fmt;
+use core::hash;
 
 mod baseline;
 mod combine;

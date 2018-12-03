@@ -47,6 +47,13 @@ On top of that, every commit is tested using an address sanitizer in CI to catch
 
 Even though neither fuzzing not sanitization has revealed any safety bugs yet, please don't hesitate to file an issue if you run into any crashes or other unexpected behaviour.
 
+## `no_std`
+
+This library supports being built without the Rust `std` library, by depending on the [raw-cpuid](https://github.com/gz/rust-cpuid) library.
+
+Simply enable the `no_std` feature to build without `std`.
+
+
 ## License
 
 This project is licensed under either of
