@@ -42,7 +42,7 @@ script:
         cargo check --tests --target $CROSS_CHECK
     elif [[ "$CROSS_TEST" ]]
     then
-        cargo install cross
+        cargo install --force cross
         cross test --target=$CROSS_TEST
     else
         cargo test --no-fail-fast
