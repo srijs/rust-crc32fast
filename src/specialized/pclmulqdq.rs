@@ -1,7 +1,7 @@
 #[cfg(target_arch = "x86")]
-use std::arch::x86 as arch;
+use core::arch::x86 as arch;
 #[cfg(target_arch = "x86_64")]
-use std::arch::x86_64 as arch;
+use core::arch::x86_64 as arch;
 
 #[derive(Clone)]
 pub struct State {
@@ -9,6 +9,12 @@ pub struct State {
 }
 
 impl State {
+    #[cfg(not(feature = "std"))]
+    pub fn new() -> Option<Self> {
+        None
+    }
+
+    #[cfg(feature = "std")]
     pub fn new() -> Option<Self> {
         if is_x86_feature_detected!("pclmulqdq")
             && is_x86_feature_detected!("sse2")
@@ -51,6 +57,7 @@ const K6: i64 = 0x1db710640;
 const P_X: i64 = 0x1DB710641;
 const U_PRIME: i64 = 0x1F7011641;
 
+#[cfg(feature = "std")]
 unsafe fn debug(s: &str, a: arch::__m128i) -> arch::__m128i {
     if false {
         union A {
@@ -65,6 +72,11 @@ unsafe fn debug(s: &str, a: arch::__m128i) -> arch::__m128i {
         println!();
     }
     return a;
+}
+
+#[cfg(not(feature = "std"))]
+unsafe fn debug(_s: &str, a: arch::__m128i) -> arch::__m128i {
+    a
 }
 
 #[target_feature(enable = "pclmulqdq", enable = "sse2", enable = "sse4.1")]

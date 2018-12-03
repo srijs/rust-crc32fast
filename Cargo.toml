@@ -19,6 +19,10 @@ bencher = "0.1"
 quickcheck = { version = "0.6", default-features = false }
 rand = "0.4"
 
+[features]
+default = ["std"]
+std = []
+
 [[bench]]
 name = "bench"
 harness = false
