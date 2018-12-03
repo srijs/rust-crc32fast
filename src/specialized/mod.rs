@@ -1,7 +1,7 @@
 cfg_if! {
     if #[cfg(all(
         crc32fast_stdarchx86,
-        any(ctarget_arch = "x86", target_arch = "x86_64")
+        any(target_arch = "x86", target_arch = "x86_64")
     ))] {
         mod pclmulqdq;
         pub use self::pclmulqdq::State;
