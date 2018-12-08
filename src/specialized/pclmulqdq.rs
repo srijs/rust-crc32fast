@@ -57,7 +57,7 @@ const K6: i64 = 0x1db710640;
 const P_X: i64 = 0x1DB710641;
 const U_PRIME: i64 = 0x1F7011641;
 
-#[cfg(feature = "use_std")]
+#[cfg(feature = "std")]
 unsafe fn debug(s: &str, a: arch::__m128i) -> arch::__m128i {
     if false {
         union A {
@@ -74,7 +74,7 @@ unsafe fn debug(s: &str, a: arch::__m128i) -> arch::__m128i {
     return a;
 }
 
-#[cfg(not(feature = "use_std"))]
+#[cfg(not(feature = "std"))]
 unsafe fn debug(_s: &str, a: arch::__m128i) -> arch::__m128i {
     a
 }

@@ -49,10 +49,7 @@ Even though neither fuzzing not sanitization has revealed any safety bugs yet, p
 
 ## `no_std`
 
-This library supports being built without the Rust `std` library, by depending on the [raw-cpuid](https://github.com/gz/rust-cpuid) library.
-
-Simply enable the `no_std` feature to build without `std`.
-
+This library supports being built without the Rust `std` library. The optimized `x86` implementation will be unavailable since it requires OS support. To build the crate in a `no_std` context, disable the default `std` feature.
 
 ## License
 
