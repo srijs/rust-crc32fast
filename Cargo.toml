@@ -1,6 +1,6 @@
 [package]
 name = "crc32fast"
-version = "1.1.1"
+version = "1.1.2"
 license = "MIT OR Apache-2.0"
 authors = [
   "Sam Rijs <srijs@airpost.net>",
