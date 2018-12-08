@@ -5,6 +5,9 @@ cfg_if! {
     ))] {
         mod pclmulqdq;
         pub use self::pclmulqdq::State;
+    } else if #[cfg(all(feature = "nightly", target_arch = "aarch64"))] {
+        mod aarch64;
+        pub use self::aarch64::State;
     } else {
         #[derive(Clone)]
         pub enum State {}

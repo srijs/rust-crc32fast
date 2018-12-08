@@ -22,6 +22,7 @@ rand = "0.4"
 [features]
 default = ["std"]
 std = []
+nightly = []
 
 [[bench]]
 name = "bench"
