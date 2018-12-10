@@ -47,9 +47,13 @@ On top of that, every commit is tested using an address sanitizer in CI to catch
 
 Even though neither fuzzing not sanitization has revealed any safety bugs yet, please don't hesitate to file an issue if you run into any crashes or other unexpected behaviour.
 
-## `no_std`
+## Available feature flags
 
-This library supports being built without the Rust `std` library. The optimized `x86` implementation will be unavailable since it requires OS support. To build the crate in a `no_std` context, disable the default `std` feature.
+### `std`
+
+This library supports being built without the Rust `std` library, which is useful for low-level use-cases such as embedded where no operating system is available. To build the crate in a `no_std` context, disable the default `std` feature.
+
+Note: Because runtime CPU feature detection requires OS support, the specialized SIMD implementations will be unavailable when the `std` feature is disabled.
 
 ## License
 
