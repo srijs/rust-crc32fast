@@ -11,7 +11,16 @@ pub struct State {
 impl State {
     #[cfg(not(feature = "std"))]
     pub fn new() -> Option<Self> {
-        None
+        if cfg!(target_feature = "pclmulqdq")
+            && cfg!(target_feature = "sse2")
+            && cfg!(target_feature = "sse4.1")
+        {
+            // SAFETY: The conditions above ensure that all
+            //         required instructions are supported by the CPU.
+            Some(Self { state: 0 })
+        } else {
+            None
+        }
     }
 
     #[cfg(feature = "std")]
