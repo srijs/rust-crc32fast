@@ -12,7 +12,7 @@ cfg_if! {
         #[derive(Clone)]
         pub enum State {}
         impl State {
-            pub fn new() -> Option<Self> {
+            pub fn new(_: u32) -> Option<Self> {
                 None
             }
 

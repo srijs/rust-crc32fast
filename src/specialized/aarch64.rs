@@ -6,11 +6,11 @@ pub struct State {
 }
 
 impl State {
-    pub fn new() -> Option<Self> {
+    pub fn new(state: u32) -> Option<Self> {
         if is_aarch64_feature_detected!("crc") {
             // SAFETY: The conditions above ensure that all
             //         required instructions are supported by the CPU.
-            Some(Self { state: 0 })
+            Some(Self { state })
         } else {
             None
         }
@@ -55,7 +55,10 @@ pub unsafe fn calculate(crc: u32, data: &[u8]) -> u32 {
         c32 = arch::__crc32d(c32, chunk[6]);
         c32 = arch::__crc32d(c32, chunk[7]);
     }
-    c32 = quad_iter.remainder().iter().fold(c32, |acc, &q| arch::__crc32d(acc, q));
+    c32 = quad_iter
+        .remainder()
+        .iter()
+        .fold(c32, |acc, &q| arch::__crc32d(acc, q));
 
     c32 = post_quad.iter().fold(c32, |acc, &b| arch::__crc32b(acc, b));
 
@@ -65,12 +68,12 @@ pub unsafe fn calculate(crc: u32, data: &[u8]) -> u32 {
 #[cfg(test)]
 mod test {
     quickcheck! {
-        fn check_against_baseline(chunks: Vec<(Vec<u8>, usize)>) -> bool {
-            let mut baseline = super::super::super::baseline::State::new();
-            let mut aarch64 = super::State::new().expect("not supported");
+        fn check_against_baseline(init: u32, chunks: Vec<(Vec<u8>, usize)>) -> bool {
+            let mut baseline = super::super::super::baseline::State::new(init);
+            let mut aarch64 = super::State::new(init).expect("not supported");
             for (chunk, mut offset) in chunks {
                 // simulate random alignments by offsetting the slice by up to 15 bytes
-                offset = offset & 0xF;
+                offset &= 0xF;
                 if chunk.len() <= offset {
                     baseline.update(&chunk);
                     aarch64.update(&chunk);

@@ -10,28 +10,28 @@ pub struct State {
 
 impl State {
     #[cfg(not(feature = "std"))]
-    pub fn new() -> Option<Self> {
+    pub fn new(state: u32) -> Option<Self> {
         if cfg!(target_feature = "pclmulqdq")
             && cfg!(target_feature = "sse2")
             && cfg!(target_feature = "sse4.1")
         {
             // SAFETY: The conditions above ensure that all
             //         required instructions are supported by the CPU.
-            Some(Self { state: 0 })
+            Some(Self { state })
         } else {
             None
         }
     }
 
     #[cfg(feature = "std")]
-    pub fn new() -> Option<Self> {
+    pub fn new(state: u32) -> Option<Self> {
         if is_x86_feature_detected!("pclmulqdq")
             && is_x86_feature_detected!("sse2")
             && is_x86_feature_detected!("sse4.1")
         {
             // SAFETY: The conditions above ensure that all
             //         required instructions are supported by the CPU.
-            Some(Self { state: 0 })
+            Some(Self { state })
         } else {
             None
         }
@@ -182,7 +182,7 @@ pub unsafe fn calculate(crc: u32, mut data: &[u8]) -> u32 {
     // C(x) = R(x) ^ T2(x) / x^32
     let c = arch::_mm_extract_epi32(arch::_mm_xor_si128(x, t2), 1) as u32;
 
-    if data.len() > 0 {
+    if !data.is_empty() {
         ::baseline::update_fast_16(!c, data)
     } else {
         !c
@@ -205,12 +205,12 @@ unsafe fn get(a: &mut &[u8]) -> arch::__m128i {
 #[cfg(test)]
 mod test {
     quickcheck! {
-        fn check_against_baseline(chunks: Vec<(Vec<u8>, usize)>) -> bool {
-            let mut baseline = super::super::super::baseline::State::new();
-            let mut pclmulqdq = super::State::new().expect("not supported");
+        fn check_against_baseline(init: u32, chunks: Vec<(Vec<u8>, usize)>) -> bool {
+            let mut baseline = super::super::super::baseline::State::new(init);
+            let mut pclmulqdq = super::State::new(init).expect("not supported");
             for (chunk, mut offset) in chunks {
                 // simulate random alignments by offsetting the slice by up to 15 bytes
-                offset = offset & 0xF;
+                offset &= 0xF;
                 if chunk.len() <= offset {
                     baseline.update(&chunk);
                     pclmulqdq.update(&chunk);
