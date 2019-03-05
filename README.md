@@ -50,11 +50,18 @@ Even though neither fuzzing not sanitization has revealed any safety bugs yet, p
 
 ## Available feature flags
 
-### `std`
+### `std` (default: enabled)
 
 This library supports being built without the Rust `std` library, which is useful for low-level use-cases such as embedded where no operating system is available. To build the crate in a `no_std` context, disable the default `std` feature.
 
 Note: Because runtime CPU feature detection requires OS support, the specialized SIMD implementations will be unavailable when the `std` feature is disabled.
+
+### `nightly` (default: disabled)
+
+This feature flag enables unstable features that are only available on the `nightly` channel. Keep in mind that when enabling this feature flag, you
+might experience breaking changes when updating compiler versions.
+
+Currently, enabling this feature flag will make the optimized `aarch64` implementation available.
 
 ## License
 
