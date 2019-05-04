@@ -14,7 +14,7 @@ impl State {
         self.state = update_fast_16(self.state, buf);
     }
 
-    pub fn finalize(self) -> u32 {
+    pub fn finalize(&self) -> u32 {
         self.state
     }
 

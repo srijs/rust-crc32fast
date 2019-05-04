@@ -22,7 +22,7 @@ impl State {
         self.state = unsafe { calculate(self.state, buf) }
     }
 
-    pub fn finalize(self) -> u32 {
+    pub fn finalize(&self) -> u32 {
         self.state
     }
 

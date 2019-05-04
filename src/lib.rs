@@ -108,10 +108,10 @@ impl Hasher {
     }
 
     /// Finalize the hash state and return the computed CRC32 value.
-    pub fn finalize(self) -> u32 {
+    pub fn finalize(&self) -> u32 {
         match self.state {
-            State::Baseline(state) => state.finalize(),
-            State::Specialized(state) => state.finalize(),
+            State::Baseline(ref state) => state.finalize(),
+            State::Specialized(ref state) => state.finalize(),
         }
     }
 

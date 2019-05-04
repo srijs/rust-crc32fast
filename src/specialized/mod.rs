@@ -20,8 +20,8 @@ cfg_if! {
                 match *self {}
             }
 
-            pub fn finalize(self) -> u32 {
-                match self{}
+            pub fn finalize(&self) -> u32 {
+                match *self{}
             }
 
             pub fn reset(&mut self) {
