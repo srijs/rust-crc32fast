@@ -24,7 +24,7 @@
     feature(stdsimd, aarch64_target_feature)
 )]
 
-#[deny(missing_docs)]
+#![deny(missing_docs)]
 
 use core::fmt;
 use core::hash;
