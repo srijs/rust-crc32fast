@@ -1,3 +1,5 @@
+use cfg_if::cfg_if;
+
 cfg_if! {
     if #[cfg(all(
         crc32fast_stdarchx86,
