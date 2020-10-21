@@ -1,4 +1,4 @@
-use table::CRC32_TABLE;
+use crate::table::CRC32_TABLE;
 
 #[derive(Clone)]
 pub struct State {
@@ -23,7 +23,7 @@ impl State {
     }
 
     pub fn combine(&mut self, other: u32, amount: u64) {
-        self.state = ::combine::combine(self.state, other, amount);
+        self.state = crate::combine::combine(self.state, other, amount);
     }
 }
 
@@ -70,6 +70,8 @@ pub(crate) fn update_slow(prev: u32, buf: &[u8]) -> u32 {
 
 #[cfg(test)]
 mod test {
+    use quickcheck::quickcheck;
+
     #[test]
     fn slow() {
         assert_eq!(super::update_slow(0, b""), 0);
