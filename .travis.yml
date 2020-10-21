@@ -14,7 +14,6 @@ matrix:
     - env: CROSS_TEST=i686-unknown-linux-gnu
     # Tier 2
     - env: CROSS_TEST=aarch64-unknown-linux-gnu
-    - env: CROSS_TEST=powerpc-unknown-linux-gnu
     - env: CROSS_CHECK=wasm32-unknown-unknown
 
 script:
