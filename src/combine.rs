@@ -10,7 +10,7 @@ fn gf2_matrix_times(mat: &[u32; GF2_DIM], mut vec: u32) -> u32 {
         vec >>= 1;
         idx += 1;
     }
-    return sum;
+    sum
 }
 
 fn gf2_matrix_square(square: &mut [u32; GF2_DIM], mat: &[u32; GF2_DIM]) {
@@ -72,6 +72,5 @@ pub(crate) fn combine(mut crc1: u32, crc2: u32, mut len2: u64) -> u32 {
     }
 
     /* return combined crc */
-    crc1 ^= crc2;
-    return crc1;
+    crc1 ^ crc2
 }
