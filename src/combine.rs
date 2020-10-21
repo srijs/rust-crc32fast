@@ -20,7 +20,6 @@ fn gf2_matrix_square(square: &mut [u32; GF2_DIM], mat: &[u32; GF2_DIM]) {
 }
 
 pub(crate) fn combine(mut crc1: u32, crc2: u32, mut len2: u64) -> u32 {
-    let mut row: u32;
     let mut even = [0u32; GF2_DIM]; /* even-power-of-two zeros operator */
     let mut odd = [0u32; GF2_DIM]; /* odd-power-of-two zeros operator */
 
@@ -31,10 +30,8 @@ pub(crate) fn combine(mut crc1: u32, crc2: u32, mut len2: u64) -> u32 {
 
     /* put operator for one zero bit in odd */
     odd[0] = 0xedb88320; /* CRC-32 polynomial */
-    row = 1;
-    for n in 1..GF2_DIM {
-        odd[n] = row;
-        row <<= 1;
+    for (i, odd_val) in odd[1..].iter_mut().enumerate() {
+       *odd_val = 1 << i;
     }
 
     /* put operator for two zero bits in even */
