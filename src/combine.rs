@@ -24,8 +24,8 @@ pub(crate) fn combine(mut crc1: u32, crc2: u32, mut len2: u64) -> u32 {
     let mut even = [0u32; GF2_DIM]; /* even-power-of-two zeros operator */
     let mut odd = [0u32; GF2_DIM]; /* odd-power-of-two zeros operator */
 
-    /* degenerate case (also disallow negative lengths) */
-    if len2 <= 0 {
+    /* degenerate case */
+    if len2 == 0 {
         return crc1;
     }
 
