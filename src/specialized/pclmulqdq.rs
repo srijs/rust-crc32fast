@@ -52,7 +52,7 @@ impl State {
     }
 
     pub fn combine(&mut self, other: u32, amount: u64) {
-        self.state = ::combine::combine(self.state, other, amount);
+        self.state = crate::combine::combine(self.state, other, amount);
     }
 }
 
@@ -61,7 +61,6 @@ const K2: i64 = 0x1c6e41596;
 const K3: i64 = 0x1751997d0;
 const K4: i64 = 0x0ccaa009e;
 const K5: i64 = 0x163cd6124;
-const K6: i64 = 0x1db710640;
 
 const P_X: i64 = 0x1DB710641;
 const U_PRIME: i64 = 0x1F7011641;
@@ -80,7 +79,7 @@ unsafe fn debug(s: &str, a: arch::__m128i) -> arch::__m128i {
         }
         println!();
     }
-    return a;
+    a
 }
 
 #[cfg(not(feature = "std"))]
@@ -94,7 +93,7 @@ pub unsafe fn calculate(crc: u32, mut data: &[u8]) -> u32 {
     // the fallback implementation as it's too much hassle and doesn't seem too
     // beneficial.
     if data.len() < 128 {
-        return ::baseline::update_fast_16(crc, data);
+        return crate::baseline::update_fast_16(crc, data);
     }
 
     // Step 1: fold by 4 loop
@@ -144,7 +143,6 @@ pub unsafe fn calculate(crc: u32, mut data: &[u8]) -> u32 {
     // It's not clear to me, reading the paper, where the xor operations are
     // happening or why things are shifting around. This implementation...
     // appears to work though!
-    drop(K6);
     let x = arch::_mm_xor_si128(
         arch::_mm_clmulepi64_si128(x, k3k4, 0x10),
         arch::_mm_srli_si128(x, 8),
@@ -183,7 +181,7 @@ pub unsafe fn calculate(crc: u32, mut data: &[u8]) -> u32 {
     let c = arch::_mm_extract_epi32(arch::_mm_xor_si128(x, t2), 1) as u32;
 
     if !data.is_empty() {
-        ::baseline::update_fast_16(!c, data)
+        crate::baseline::update_fast_16(!c, data)
     } else {
         !c
     }
@@ -199,11 +197,13 @@ unsafe fn get(a: &mut &[u8]) -> arch::__m128i {
     debug_assert!(a.len() >= 16);
     let r = arch::_mm_loadu_si128(a.as_ptr() as *const arch::__m128i);
     *a = &a[16..];
-    return r;
+    r
 }
 
 #[cfg(test)]
 mod test {
+    use quickcheck::quickcheck;
+
     quickcheck! {
         fn check_against_baseline(init: u32, chunks: Vec<(Vec<u8>, usize)>) -> bool {
             let mut baseline = super::super::super::baseline::State::new(init);
