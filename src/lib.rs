@@ -1,4 +1,20 @@
-//! ## Example
+//! Fast, SIMD-accelerated CRC32 (IEEE) checksum computation.
+//!
+//! ## Usage
+//!
+//! ### Simple usage
+//!
+//! For simple use-cases, you can call the [`hash()`] convenience function to
+//! directly compute the CRC32 checksum for a given byte slice:
+//!
+//! ```rust
+//! let checksum = crc32fast::hash(b"foo bar baz");
+//! ```
+//!
+//! ### Advanced usage
+//!
+//! For use-cases that require more flexibility or performance, for example when
+//! processing large amounts of data, you can create and manipulate a [`Hasher`]:
 //!
 //! ```rust
 //! use crc32fast::Hasher;
@@ -15,7 +31,7 @@
 //! - A fast baseline implementation which processes up to 16 bytes per iteration
 //! - An optimized implementation for modern `x86` using `sse` and `pclmulqdq` instructions
 //!
-//! Calling the `Hasher::new` constructor at runtime will perform a feature detection to select the most
+//! Calling the [`Hasher::new`] constructor at runtime will perform a feature detection to select the most
 //! optimal implementation for the current CPU feature set.
 
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -42,6 +58,15 @@ mod baseline;
 mod combine;
 mod specialized;
 mod table;
+
+/// Computes the CRC32 hash of a byte slice.
+///
+/// Check out [`Hasher`] for more advanced use-cases.
+pub fn hash(buf: &[u8]) -> u32 {
+    let mut h = Hasher::new();
+    h.update(buf);
+    h.finalize()
+}
 
 #[derive(Clone)]
 enum State {
