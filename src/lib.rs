@@ -72,25 +72,35 @@ impl Hasher {
     /// This works just like `Hasher::new`, except that it allows for an initial
     /// CRC32 state to be passed in.
     pub fn new_with_initial(init: u32) -> Self {
-        Self::internal_new_specialized(init).unwrap_or_else(|| Self::internal_new_baseline(init))
+        Self::new_with_initial_len(init, 0)
+    }
+
+    /// Create a new `Hasher` with an initial CRC32 state.
+    ///
+    /// As `new_with_initial`, but also accepts a length (in bytes). The
+    /// resulting object can then be used with `combine` to compute `crc(a ||
+    /// b)` from `crc(a)`, `crc(b)`, and `len(b)`.
+    pub fn new_with_initial_len(init: u32, amount: u64) -> Self {
+        Self::internal_new_specialized(init, amount)
+            .unwrap_or_else(|| Self::internal_new_baseline(init, amount))
     }
 
     #[doc(hidden)]
     // Internal-only API. Don't use.
-    pub fn internal_new_baseline(init: u32) -> Self {
+    pub fn internal_new_baseline(init: u32, amount: u64) -> Self {
         Hasher {
-            amount: 0,
+            amount,
             state: State::Baseline(baseline::State::new(init)),
         }
     }
 
     #[doc(hidden)]
     // Internal-only API. Don't use.
-    pub fn internal_new_specialized(init: u32) -> Option<Self> {
+    pub fn internal_new_specialized(init: u32, amount: u64) -> Option<Self> {
         {
             if let Some(state) = specialized::State::new(init) {
                 return Some(Hasher {
-                    amount: 0,
+                    amount,
                     state: State::Specialized(state),
                 });
             }
@@ -173,6 +183,28 @@ mod test {
             hash_c.combine(&hash_b);
 
             hash_a.finalize() == hash_c.finalize()
+        }
+
+        fn combine_from_len(bytes_1: Vec<u8>, bytes_2: Vec<u8>) -> bool {
+            let mut hash_a = Hasher::new();
+            hash_a.update(&bytes_1);
+            let a = hash_a.finalize();
+
+            let mut hash_b = Hasher::new();
+            hash_b.update(&bytes_2);
+            let b = hash_b.finalize();
+
+            let mut hash_ab = Hasher::new();
+            hash_ab.update(&bytes_1);
+            hash_ab.update(&bytes_2);
+            let ab = hash_ab.finalize();
+
+            let mut reconstructed = Hasher::new_with_initial_len(a, bytes_1.len() as u64);
+            let hash_b_reconstructed = Hasher::new_with_initial_len(b, bytes_2.len() as u64);
+
+            reconstructed.combine(&hash_b_reconstructed);
+
+            reconstructed.finalize() == ab
         }
     }
 }
