@@ -5,7 +5,7 @@ cache:
 
 matrix:
   include:
-    - rust: 1.36.0 # MSRV
+    - rust: 1.46.0 # MSRV
     - rust: stable
     - rust: beta
     - rust: nightly
