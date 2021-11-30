@@ -37,7 +37,6 @@ script:
     then
         rustup target add $CROSS_CHECK
         cargo check --target $CROSS_CHECK
-        cargo check --tests --target $CROSS_CHECK
         cargo check --target $CROSS_CHECK --no-default-features
     elif [[ "$CROSS_TEST" ]]
     then
