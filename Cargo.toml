@@ -13,6 +13,7 @@ keywords = ["checksum", "crc", "crc32", "simd", "fast"]
 
 [dependencies]
 cfg-if = "1.0"
+zerocopy = { version = "0.7.14", features = ["simd"] }
 
 [dev-dependencies]
 bencher = "0.1"

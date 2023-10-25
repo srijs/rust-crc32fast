@@ -67,13 +67,9 @@ const P_X: i64 = 0x1DB710641;
 const U_PRIME: i64 = 0x1F7011641;
 
 #[cfg(feature = "std")]
-unsafe fn debug(s: &str, a: arch::__m128i) -> arch::__m128i {
+fn debug(s: &str, a: arch::__m128i) -> arch::__m128i {
     if false {
-        union A {
-            a: arch::__m128i,
-            b: [u8; 16],
-        }
-        let x = A { a }.b;
+        let x: [u8; 16] = zerocopy::transmute!(a);
         print!(" {:20} | ", s);
         for x in x.iter() {
             print!("{:02x} ", x);
@@ -84,7 +80,7 @@ unsafe fn debug(s: &str, a: arch::__m128i) -> arch::__m128i {
 }
 
 #[cfg(not(feature = "std"))]
-unsafe fn debug(_s: &str, a: arch::__m128i) -> arch::__m128i {
+fn debug(_s: &str, a: arch::__m128i) -> arch::__m128i {
     a
 }
 
