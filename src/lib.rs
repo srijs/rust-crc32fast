@@ -192,6 +192,32 @@ impl hash::Hasher for Hasher {
     }
 }
 
+#[cfg(feature = "std")]
+impl std::io::Write for Hasher {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.update(buf);
+        Ok(buf.len())
+    }
+
+    fn write_all(&mut self, buf: &[u8]) -> std::io::Result<()> {
+        self.update(buf);
+        Ok(())
+    }
+
+    fn write_vectored(&mut self, bufs: &[std::io::IoSlice<'_>]) -> std::io::Result<usize> {
+        let mut len = 0;
+        for buf in bufs {
+            self.update(buf);
+            len += buf.len();
+        }
+        Ok(len)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::Hasher;
