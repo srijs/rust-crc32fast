@@ -41,15 +41,6 @@
 )]
 
 #[deny(missing_docs)]
-#[cfg(test)]
-#[macro_use]
-extern crate quickcheck;
-
-#[macro_use]
-extern crate cfg_if;
-
-#[cfg(feature = "std")]
-use std as core;
 
 use core::fmt;
 use core::hash;
@@ -194,6 +185,7 @@ impl hash::Hasher for Hasher {
 
 #[cfg(test)]
 mod test {
+    use quickcheck::quickcheck;
     use super::Hasher;
 
     quickcheck! {
