@@ -37,7 +37,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(
     all(feature = "nightly", target_arch = "aarch64"),
-    feature(stdsimd, aarch64_target_feature)
+    feature(stdarch_arm_crc32)
 )]
 
 #[deny(missing_docs)]
