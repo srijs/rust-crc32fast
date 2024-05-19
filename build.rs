@@ -4,6 +4,7 @@ use std::str;
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rustc-check-cfg=cfg(crc32fast_stdarchx86)");
 
     let minor = match rustc_minor_version() {
         Some(n) => n,
