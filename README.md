@@ -73,8 +73,6 @@ Note: Because runtime CPU feature detection requires OS support, the specialized
 This feature flag enables unstable features that are only available on the `nightly` channel. Keep in mind that when enabling this feature flag, you
 might experience breaking changes when updating compiler versions.
 
-Currently, enabling this feature flag will make the optimized `aarch64` implementation available.
-
 ## License
 
 This project is licensed under either of
