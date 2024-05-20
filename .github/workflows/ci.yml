@@ -22,9 +22,42 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Rust
         run: rustup update stable --no-self-update
-      - name: test (debug)
+      - name: Test in debug mode
         run: cargo test --no-fail-fast
-      - name: test (release)
+      - name: Test in release mode
         run: cargo test --no-fail-fast --release
-      - name: check (no default features)
+      - name: Check with no default features
         run: cargo check --no-default-features
+  nightly:
+    name: nightly
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        run: rustup update nightly --no-self-update
+      - name: Test in debug mode
+        run: cargo +nightly test --no-fail-fast
+      - name: Test in release mode
+        run: cargo +nightly test --no-fail-fast --release
+      - name: Check with no default features
+        run: cargo +nightly check --no-default-features
+      - name: Build benches
+        run: cargo +nightly build --benches --all
+  asan:
+    name: asan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        run: rustup update nightly --no-self-update
+      - name: Run address sanitizer
+        run: RUSTFLAGS="-Z sanitizer=address" cargo +nightly test --lib --target x86_64-unknown-linux-gnu
+        env:
+          ASAN_OPTIONS: "detect_odr_violation=0 detect_leaks=0"
+          RUST_BACKTRACE: "1"
