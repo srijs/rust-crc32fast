@@ -1,3 +1,12 @@
+//! Specialized checksum code for the x86 CPU architecture, based on the efficient algorithm described
+//! in the following whitepaper:
+//!
+//! Gopal, V., Ozturk, E., Guilford, J., Wolrich, G., Feghali, W., Dixon, M., & Karakoyunlu, D. (2009).
+//! _Fast CRC computation for generic polynomials using PCLMULQDQ instruction_. Intel.
+//! (Mirror link: <https://fossies.org/linux/zlib-ng/doc/crc-pclmulqdq.pdf>, accessed 2024-05-20)
+//!
+//! Throughout the code, this work is referred to as "the paper".
+
 #[cfg(target_arch = "x86")]
 use core::arch::x86 as arch;
 #[cfg(target_arch = "x86_64")]
