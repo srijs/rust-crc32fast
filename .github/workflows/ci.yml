@@ -89,8 +89,8 @@ jobs:
         run: cross test --target=${{ matrix.target }}
       - name: Check with no default features
         run: cross check --target=${{ matrix.target }} --no-default-features
-  cross-test-nightly-feature:
-    name: cross-check-nightly
+  cross-check-nightly-feature:
+    name: cross-check-nightly-features
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -100,12 +100,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Rust
         run: rustup update --no-self-update
-      - name: Install Cross
-        run: cargo install --force cross
-      - name: Test
-        run: cross +nightly test --target=${{ matrix.target }} --features=nightly
+      - name: Add target
+        run: rustup target add ${{ matrix.target }}
+      - name: Check
+        run: cargo check --target=${{ matrix.target }} --features=nightly
       - name: Check with no default features
-        run: cross +nightly check --target=${{ matrix.target }} --no-default-features --features=nightly
+        run: cargo check --target=${{ matrix.target }} --no-default-features --features=nightly
   cross-check:
     name: cross-check
     runs-on: ubuntu-latest
