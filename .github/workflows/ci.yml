@@ -93,6 +93,6 @@ jobs:
       - name: Add target
         run: rustup target add ${{ matrix.target }}
       - name: Check
-        run: cross check --target=${{ matrix.target }}
+        run: cargo check --target=${{ matrix.target }}
       - name: Check with no default features
-        run: cross check --target=${{ matrix.target }} --no-default-features
+        run: cargo check --target=${{ matrix.target }} --no-default-features
