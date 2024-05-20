@@ -8,6 +8,9 @@ on:
     branches:
       - master
 
+env:
+  MSRV: "1.46.0"
+
 jobs:
   stable:
     name: stable
@@ -30,17 +33,11 @@ jobs:
         run: cargo check --no-default-features
   nightly:
     name: nightly
-    strategy:
-      matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
-          - windows-latest
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust
-        run: rustup update nightly --no-self-update
+        run: rustup update nightly
       - name: Test in debug mode
         run: cargo +nightly test --no-fail-fast
       - name: Test in release mode
@@ -49,6 +46,19 @@ jobs:
         run: cargo +nightly check --no-default-features
       - name: Build benches
         run: cargo +nightly build --benches --all
+  msrv:
+    name: msrv
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        run: rustup update $MSRV && rustup default $MSRV
+      - name: Test in debug mode
+        run: cargo test --no-fail-fast
+      - name: Test in release mode
+        run: cargo test --no-fail-fast --release
+      - name: Check with no default features
+        run: cargo check --no-default-features
   asan:
     name: asan
     runs-on: ubuntu-latest
