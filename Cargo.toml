@@ -9,7 +9,8 @@ authors = [
 description = "Fast, SIMD-accelerated CRC32 (IEEE) checksum computation"
 repository = "https://github.com/srijs/rust-crc32fast"
 readme = "README.md"
-keywords = ["checksum", "crc", "crc32", "simd", "fast"]
+keywords = ["hash", "crc", "crc32", "simd", "fast"]
+categories = ["algorithms", "no-std"]
 
 [dependencies]
 cfg-if = "1.0"
