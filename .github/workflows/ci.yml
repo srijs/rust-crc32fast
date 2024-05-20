@@ -116,10 +116,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust
-        run: rustup update nightly --no-self-update
+        run: rustup update nightly --no-self-update && rustup default nightly
       - name: Add target
         run: rustup target add ${{ matrix.target }}
       - name: Check
-        run: cargo +nightly check --target=${{ matrix.target }} --features=nightly
+        run: cargo check --target=${{ matrix.target }} --features=nightly
       - name: Check with no default features
-        run: cargo +nightly check --target=${{ matrix.target }} --no-default-features --features=nightly
+        run: cargo check --target=${{ matrix.target }} --no-default-features --features=nightly
