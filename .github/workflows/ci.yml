@@ -99,7 +99,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust
-        run: rustup update --no-self-update
+        run: rustup update nightly --no-self-update
       - name: Add target
         run: rustup target add ${{ matrix.target }}
       - name: Check
