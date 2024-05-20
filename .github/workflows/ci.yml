@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+jobs:
+  stable:
+    name: stable
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        run: rustup update stable --no-self-update
+      - name: test (debug)
+        run: cargo test --no-fail-fast
+      - name: test (release)
+        run: cargo test --no-fail-fast --release
+      - name: check (no default features)
+        run: cargo check --no-default-features
