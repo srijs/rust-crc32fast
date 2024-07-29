@@ -77,6 +77,7 @@ const U_PRIME: i64 = 0x1F7011641;
 #[cfg(feature = "std")]
 unsafe fn debug(s: &str, a: arch::__m128i) -> arch::__m128i {
     if false {
+        #[repr(C)]
         union A {
             a: arch::__m128i,
             b: [u8; 16],
