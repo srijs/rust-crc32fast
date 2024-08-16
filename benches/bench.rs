@@ -1,7 +1,5 @@
 #[macro_use]
 extern crate bencher;
-extern crate crc32fast;
-extern crate rand;
 
 use bencher::Bencher;
 use crc32fast::Hasher;

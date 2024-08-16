@@ -47,8 +47,8 @@ extern crate cfg_if;
 #[cfg(feature = "std")]
 use std as core;
 
-use core::fmt;
-use core::hash;
+use crate::core::fmt;
+use crate::core::hash;
 
 mod baseline;
 mod combine;
@@ -167,7 +167,7 @@ impl Hasher {
 }
 
 impl fmt::Debug for Hasher {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("crc32fast::Hasher").finish()
     }
 }
