@@ -14,7 +14,7 @@ fn bench_crc32_v2(b: &mut Bencher, size: usize) {
     rand::thread_rng().fill(&mut bytes[..]);
 
     b.iter(|| {
-        crc32(bencher::black_box(0), bencher::black_box(&bytes));
+        bencher::black_box(crc32(bencher::black_box(0), bencher::black_box(&bytes)));
     });
 
     b.bytes = size as u64;
