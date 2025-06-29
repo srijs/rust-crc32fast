@@ -36,8 +36,9 @@ fn bench_megabyte_specialized(b: &mut Bencher) {
 }
 
 fn bench_combine(b: &mut Bencher) {
-    let h1 = Hasher::new_with_initial_len(0x663DF39A, 0x6DD2EBDA9F9A0C29);
-    let h2 = Hasher::new_with_initial_len(0x24DE685D, 0x5221FBD076875711);
+    let (i1, l1, i2, l2) = rand::thread_rng().gen();
+    let h1 = Hasher::new_with_initial_len(i1, l1);
+    let h2 = Hasher::new_with_initial_len(i2, l2);
 
     b.iter(|| {
         let mut h = h1.clone();

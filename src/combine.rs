@@ -1,15 +1,14 @@
 const GF2_DIM: usize = 32;
 
-fn gf2_matrix_times(mat: &[u32; GF2_DIM], mut vec: u32) -> u32 {
+fn gf2_matrix_times(mat: &[u32; GF2_DIM], vec: u32) -> u32 {
     let mut sum = 0;
-    let mut idx = 0;
-    while vec > 0 {
-        if vec & 1 == 1 {
-            sum ^= mat[idx];
+
+    for (i, m) in mat.iter().enumerate() {
+        if vec >> i & 1 == 1 {
+            sum ^= *m;
         }
-        vec >>= 1;
-        idx += 1;
     }
+
     sum
 }
 
@@ -69,6 +68,5 @@ pub(crate) fn combine(mut crc1: u32, crc2: u32, mut len2: u64) -> u32 {
     }
 
     // return combined crc
-    crc1 ^= crc2;
-    crc1
+    crc1 ^ crc2
 }
