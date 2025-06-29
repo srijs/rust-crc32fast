@@ -74,28 +74,6 @@ const K5: i64 = 0x163cd6124;
 const P_X: i64 = 0x1DB710641;
 const U_PRIME: i64 = 0x1F7011641;
 
-#[cfg(feature = "std")]
-unsafe fn debug(s: &str, a: arch::__m128i) -> arch::__m128i {
-    if false {
-        union A {
-            a: arch::__m128i,
-            b: [u8; 16],
-        }
-        let x = A { a }.b;
-        print!(" {:20} | ", s);
-        for x in x.iter() {
-            print!("{:02x} ", x);
-        }
-        println!();
-    }
-    return a;
-}
-
-#[cfg(not(feature = "std"))]
-unsafe fn debug(_s: &str, a: arch::__m128i) -> arch::__m128i {
-    a
-}
-
 #[target_feature(enable = "pclmulqdq", enable = "sse2", enable = "sse4.1")]
 unsafe fn calculate(crc: u32, mut data: &[u8]) -> u32 {
     // In theory we can accelerate smaller chunks too, but for now just rely on
@@ -132,8 +110,6 @@ unsafe fn calculate(crc: u32, mut data: &[u8]) -> u32 {
         x = reduce128(x, get(&mut data), k3k4);
     }
 
-    debug("128 > 64 init", x);
-
     // Perform step 3, reduction from 128 bits to 64 bits. This is
     // significantly different from the paper and basically doesn't follow it
     // at all. It's not really clear why, but implementations of this algorithm
@@ -164,7 +140,6 @@ unsafe fn calculate(crc: u32, mut data: &[u8]) -> u32 {
         ),
         arch::_mm_srli_si128(x, 4),
     );
-    debug("128 > 64 xx", x);
 
     // Perform a Barrett reduction from our now 64 bits to 32 bits. The
     // algorithm for this is described at the end of the paper, and note that
