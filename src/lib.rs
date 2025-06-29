@@ -44,9 +44,6 @@ extern crate quickcheck;
 #[macro_use]
 extern crate cfg_if;
 
-#[cfg(feature = "std")]
-use std as core;
-
 use core::fmt;
 use core::hash;
 
