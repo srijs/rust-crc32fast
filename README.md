@@ -70,10 +70,7 @@ Note: Because runtime CPU feature detection requires OS support, the specialized
 
 ### `nightly` (default: disabled)
 
-This feature flag enables unstable features that are only available on the `nightly` channel. Keep in mind that when enabling this feature flag, you
-might experience breaking changes when updating compiler versions.
-
-Currently, enabling this feature flag will make the optimized `aarch64` implementation available.
+This feature flag is kept for backward compatibility but currently does nothing. It may be used in future versions to enable unstable features.
 
 ## License
 
