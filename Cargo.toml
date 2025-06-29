@@ -12,7 +12,7 @@ repository = "https://github.com/srijs/rust-crc32fast"
 readme = "README.md"
 keywords = ["hash", "crc", "crc32", "simd", "fast"]
 categories = ["algorithms", "no-std"]
-rust-version = "1.46"
+rust-version = "1.63"
 
 [dependencies]
 cfg-if = "1.0"
