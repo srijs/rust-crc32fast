@@ -54,7 +54,7 @@ optimal implementation for the current CPU feature set.
 
 Due to the use of SIMD intrinsics for the optimized implementations, this crate contains some amount of `unsafe` code.
 
-In order to ensure memory safety, the relevant code has been fuzz tested using libFuzzer (via [cargo-fuzz](cargo fuzz)) with millions of iterations in both `debug` and `release` build settings. You can inspect the test setup in the `fuzz` sub-directory, which also has instructions on how to run the tests yourself.
+In order to ensure memory safety, the relevant code has been fuzz tested using `libFuzzer` (via [cargo-fuzz](https://github.com/rust-fuzz/cargo-fuzz)) with millions of iterations in both `debug` and `release` build settings. You can inspect the test setup in the `fuzz` sub-directory, which also has instructions on how to run the tests yourself.
 
 On top of that, every commit is tested using an address sanitizer in CI to catch any out of bounds memory accesses.
 
