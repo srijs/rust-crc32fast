@@ -50,7 +50,7 @@ pub(crate) fn update_fast_16(prev: u32, mut buf: &[u8]) -> u32 {
                 ^ CRC32_TABLE[0xc][buf[0x3] as usize ^ ((crc >> 0x18) & 0xFF) as usize]
                 ^ CRC32_TABLE[0xd][buf[0x2] as usize ^ ((crc >> 0x10) & 0xFF) as usize]
                 ^ CRC32_TABLE[0xe][buf[0x1] as usize ^ ((crc >> 0x08) & 0xFF) as usize]
-                ^ CRC32_TABLE[0xf][buf[0x0] as usize ^ ((crc >> 0x00) & 0xFF) as usize];
+                ^ CRC32_TABLE[0xf][buf[0x0] as usize ^ (crc & 0xFF) as usize];
             buf = &buf[16..];
         }
     }

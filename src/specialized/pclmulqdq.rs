@@ -181,7 +181,7 @@ unsafe fn get(a: &mut &[u8]) -> arch::__m128i {
     debug_assert!(a.len() >= 16);
     let r = arch::_mm_loadu_si128(a.as_ptr() as *const arch::__m128i);
     *a = &a[16..];
-    return r;
+    r
 }
 
 #[cfg(test)]

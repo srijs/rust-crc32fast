@@ -35,10 +35,7 @@
 //! optimal implementation for the current CPU feature set.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-
-#[deny(missing_docs)]
-
-
+#![deny(missing_docs)]
 use core::fmt;
 use core::hash;
 
