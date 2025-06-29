@@ -1,8 +1,3 @@
-#[macro_use]
-extern crate bencher;
-extern crate crc32fast;
-extern crate rand;
-
 use bencher::Bencher;
 use crc32fast::Hasher;
 use rand::Rng;
@@ -40,14 +35,14 @@ fn bench_megabyte_specialized(b: &mut Bencher) {
     )
 }
 
-benchmark_group!(
+bencher::benchmark_group!(
     bench_baseline,
     bench_kilobyte_baseline,
     bench_megabyte_baseline
 );
-benchmark_group!(
+bencher::benchmark_group!(
     bench_specialized,
     bench_kilobyte_specialized,
     bench_megabyte_specialized
 );
-benchmark_main!(bench_baseline, bench_specialized);
+bencher::benchmark_main!(bench_baseline, bench_specialized);

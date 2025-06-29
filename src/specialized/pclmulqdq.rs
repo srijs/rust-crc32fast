@@ -211,7 +211,7 @@ unsafe fn get(a: &mut &[u8]) -> arch::__m128i {
 
 #[cfg(test)]
 mod test {
-    quickcheck! {
+    quickcheck::quickcheck! {
         fn check_against_baseline(init: u32, chunks: Vec<(Vec<u8>, usize)>) -> bool {
             let mut baseline = super::super::super::baseline::State::new(init);
             let mut pclmulqdq = super::State::new(init).expect("not supported");

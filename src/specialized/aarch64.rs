@@ -79,7 +79,7 @@ pub unsafe fn calculate(crc: u32, data: &[u8]) -> u32 {
 
 #[cfg(test)]
 mod test {
-    quickcheck! {
+    quickcheck::quickcheck! {
         fn check_against_baseline(init: u32, chunks: Vec<(Vec<u8>, usize)>) -> bool {
             let mut baseline = super::super::super::baseline::State::new(init);
             let mut aarch64 = super::State::new(init).expect("not supported");

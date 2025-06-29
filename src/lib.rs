@@ -37,12 +37,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[deny(missing_docs)]
-#[cfg(test)]
-#[macro_use]
-extern crate quickcheck;
 
-#[macro_use]
-extern crate cfg_if;
 
 use core::fmt;
 use core::hash;
@@ -189,7 +184,7 @@ impl hash::Hasher for Hasher {
 mod test {
     use super::Hasher;
 
-    quickcheck! {
+    quickcheck::quickcheck! {
         fn combine(bytes_1: Vec<u8>, bytes_2: Vec<u8>) -> bool {
             let mut hash_a = Hasher::new();
             hash_a.update(&bytes_1);
