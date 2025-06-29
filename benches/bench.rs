@@ -35,6 +35,17 @@ fn bench_megabyte_specialized(b: &mut Bencher) {
     )
 }
 
+fn bench_combine(b: &mut Bencher) {
+    let h1 = Hasher::new_with_initial_len(0x663DF39A, 0x6DD2EBDA9F9A0C29);
+    let h2 = Hasher::new_with_initial_len(0x24DE685D, 0x5221FBD076875711);
+
+    b.iter(|| {
+        let mut h = h1.clone();
+        h.combine(&h2);
+        bencher::black_box(h);
+    })
+}
+
 bencher::benchmark_group!(
     bench_baseline,
     bench_kilobyte_baseline,
@@ -45,4 +56,5 @@ bencher::benchmark_group!(
     bench_kilobyte_specialized,
     bench_megabyte_specialized
 );
-bencher::benchmark_main!(bench_baseline, bench_specialized);
+bencher::benchmark_group!(bench_combine_group, bench_combine);
+bencher::benchmark_main!(bench_baseline, bench_specialized, bench_combine_group);
