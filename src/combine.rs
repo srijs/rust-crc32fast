@@ -1,72 +1,57 @@
-const GF2_DIM: usize = 32;
+const POLY: u32 = 0xedb88320;
 
-fn gf2_matrix_times(mat: &[u32; GF2_DIM], vec: u32) -> u32 {
-    let mut sum = 0;
+static X2N_TABLE: [u32; 32] = [
+    0x00800000, 0x00008000, 0xedb88320, 0xb1e6b092, 0xa06a2517, 0xed627dae, 0x88d14467, 0xd7bbfe6a,
+    0xec447f11, 0x8e7ea170, 0x6427800e, 0x4d47bae0, 0x09fe548f, 0x83852d0f, 0x30362f1a, 0x7b5a9cc3,
+    0x31fec169, 0x9fec022a, 0x6c8dedc4, 0x15d6874d, 0x5fde7a4e, 0xbad90e37, 0x2e4e5eef, 0x4eaba214,
+    0xa8a472c0, 0x429a969e, 0x148d302a, 0xc40ba6d0, 0xc4e22c3c, 0x40000000, 0x20000000, 0x08000000,
+];
 
-    for (i, m) in mat.iter().enumerate() {
-        if vec >> i & 1 == 1 {
-            sum ^= *m;
-        }
-    }
+// Calculates a(x) multiplied by b(x) modulo p(x), where p(x) is the CRC polynomial,
+// reflected. For speed, this requires that a not be zero.
+fn multiply(a: u32, mut b: u32) -> u32 {
+    let mut m = 1u32 << 31;
+    let mut p = 0u32;
 
-    sum
-}
-
-fn gf2_matrix_square(square: &mut [u32; GF2_DIM], mat: &[u32; GF2_DIM]) {
-    for n in 0..GF2_DIM {
-        square[n] = gf2_matrix_times(mat, mat[n]);
-    }
-}
-
-pub(crate) fn combine(mut crc1: u32, crc2: u32, mut len2: u64) -> u32 {
-    let mut even = [0u32; GF2_DIM]; // even-power-of-two zeros operator
-    let mut odd = [0u32; GF2_DIM]; // odd-power-of-two zeros operator
-
-    // degenerate case (also disallow negative lengths)
-    if len2 == 0 {
-        return crc1;
-    }
-
-    // put operator for one zero bit in odd
-    odd[0] = 0xedb88320; // CRC-32 polynomial
-    for (i, r) in odd[1..].iter_mut().enumerate() {
-        *r = 1 << i;
-    }
-
-    // put operator for two zero bits in even
-    gf2_matrix_square(&mut even, &odd);
-
-    // put operator for four zero bits in odd
-    gf2_matrix_square(&mut odd, &even);
-
-    // apply len2 zeros to crc1 (first square will put the operator for one
-    // zero byte, eight zero bits, in even)
     loop {
-        // apply zeros operator for this bit of len2
-        gf2_matrix_square(&mut even, &odd);
-        if len2 & 1 == 1 {
-            crc1 = gf2_matrix_times(&even, crc1);
+        if (a & m) != 0 {
+            p ^= b;
+            if (a & (m - 1)) == 0 {
+                break;
+            }
         }
-        len2 >>= 1;
-
-        // if no more bits set, then done
-        if len2 == 0 {
-            break;
-        }
-
-        // another iteration of the loop with odd and even swapped
-        gf2_matrix_square(&mut odd, &even);
-        if len2 & 1 == 1 {
-            crc1 = gf2_matrix_times(&odd, crc1);
-        }
-        len2 >>= 1;
-
-        // if no more bits set, then done
-        if len2 == 0 {
-            break;
+        m >>= 1;
+        if b & 1 != 0 {
+            b = (b >> 1) ^ POLY;
+        } else {
+            b >>= 1;
         }
     }
 
-    // return combined crc
-    crc1 ^ crc2
+    p
+}
+
+pub(crate) fn combine(crc1: u32, crc2: u32, len2: u64) -> u32 {
+    let mut p = 1u32 << 31; // x^0 == 1
+    let n = 64 - len2.leading_zeros();
+
+    for i in 0..n {
+        if (len2 >> i & 1) != 0 {
+            p = multiply(X2N_TABLE[(i & 0x1F) as usize], p);
+        }
+    }
+
+    multiply(p, crc1) ^ crc2
+}
+
+#[test]
+fn golden() {
+    assert_eq!(
+        combine(0xB8AD0532, 0x804754D9, 0x19B77C403D9D90EE),
+        940758956
+    );
+    assert_eq!(
+        combine(0xF310DC54, 0x8B65DF79, 0x2F0327F1309076FF),
+        3454617599
+    );
 }

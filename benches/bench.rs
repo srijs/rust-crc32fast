@@ -35,8 +35,7 @@ fn bench_megabyte_specialized(b: &mut Bencher) {
     )
 }
 
-fn bench_combine(b: &mut Bencher) {
-    let (i1, l1, i2, l2) = rand::thread_rng().gen();
+fn bench_combine_inner(b: &mut Bencher, i1: u32, l1: u64, i2: u32, l2: u64) {
     let h1 = Hasher::new_with_initial_len(i1, l1);
     let h2 = Hasher::new_with_initial_len(i2, l2);
 
@@ -45,6 +44,21 @@ fn bench_combine(b: &mut Bencher) {
         h.combine(&h2);
         bencher::black_box(h);
     })
+}
+
+fn bench_combine_16(b: &mut Bencher) {
+    let (i1, l1, i2, l2): (u32, u64, u32, u16) = rand::thread_rng().gen();
+    bench_combine_inner(b, i1, l1, i2, u64::from(l2))
+}
+
+fn bench_combine_32(b: &mut Bencher) {
+    let (i1, l1, i2, l2): (u32, u64, u32, u32) = rand::thread_rng().gen();
+    bench_combine_inner(b, i1, l1, i2, u64::from(l2))
+}
+
+fn bench_combine_64(b: &mut Bencher) {
+    let (i1, l1, i2, l2): (u32, u64, u32, u64) = rand::thread_rng().gen();
+    bench_combine_inner(b, i1, l1, i2, l2)
 }
 
 bencher::benchmark_group!(
@@ -57,5 +71,10 @@ bencher::benchmark_group!(
     bench_kilobyte_specialized,
     bench_megabyte_specialized
 );
-bencher::benchmark_group!(bench_combine_group, bench_combine);
-bencher::benchmark_main!(bench_baseline, bench_specialized, bench_combine_group);
+bencher::benchmark_group!(
+    bench_combine,
+    bench_combine_16,
+    bench_combine_32,
+    bench_combine_64
+);
+bencher::benchmark_main!(bench_baseline, bench_specialized, bench_combine);
