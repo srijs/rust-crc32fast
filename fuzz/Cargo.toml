@@ -1,8 +1,21 @@
 [package]
-name = "fuzz"
-version = "0.1.0"
-authors = ["Sam Rijs <srijs@airpost.net>"]
+name = "crc32fast-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
 
 [dependencies]
-afl = "0.4.1"
-crc32fast = { path = ".." }
+libfuzzer-sys = "0.4"
+
+[dependencies.crc32fast]
+path = ".."
+
+[[bin]]
+name = "hasher"
+path = "fuzz_targets/hasher.rs"
+test = false
+doc = false
+bench = false
