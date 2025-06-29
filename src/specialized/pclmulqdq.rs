@@ -61,7 +61,7 @@ impl State {
     }
 
     pub fn combine(&mut self, other: u32, amount: u64) {
-        self.state = ::combine::combine(self.state, other, amount);
+        self.state = crate::combine::combine(self.state, other, amount);
     }
 }
 
@@ -102,7 +102,7 @@ unsafe fn calculate(crc: u32, mut data: &[u8]) -> u32 {
     // the fallback implementation as it's too much hassle and doesn't seem too
     // beneficial.
     if data.len() < 128 {
-        return ::baseline::update_fast_16(crc, data);
+        return crate::baseline::update_fast_16(crc, data);
     }
 
     // Step 1: fold by 4 loop
@@ -190,7 +190,7 @@ unsafe fn calculate(crc: u32, mut data: &[u8]) -> u32 {
     let c = arch::_mm_extract_epi32(arch::_mm_xor_si128(x, t2), 1) as u32;
 
     if !data.is_empty() {
-        ::baseline::update_fast_16(!c, data)
+        crate::baseline::update_fast_16(!c, data)
     } else {
         !c
     }
