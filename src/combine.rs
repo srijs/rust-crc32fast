@@ -10,38 +10,28 @@ static X2N_TABLE: [u32; 32] = [
 // Calculates a(x) multiplied by b(x) modulo p(x), where p(x) is the CRC polynomial,
 // reflected. For speed, this requires that a not be zero.
 fn multiply(a: u32, mut b: u32) -> u32 {
-    let mut m = 1u32 << 31;
     let mut p = 0u32;
 
-    loop {
-        if (a & m) != 0 {
-            p ^= b;
-            if (a & (m - 1)) == 0 {
-                break;
-            }
-        }
-        m >>= 1;
-        if b & 1 != 0 {
-            b = (b >> 1) ^ POLY;
-        } else {
-            b >>= 1;
-        }
+    for i in 0..32 {
+        p ^= b & ((a >> (31 - i)) & 1).wrapping_neg();
+        b = (b >> 1) ^ ((b & 1).wrapping_neg() & POLY);
     }
 
     p
 }
 
 pub(crate) fn combine(crc1: u32, crc2: u32, len2: u64) -> u32 {
-    let mut p = 1u32 << 31; // x^0 == 1
+    // We are padding the first checksum with len2-amount of zeroes. For efficiency,
+    // this is done in powers-of-two via a lookup table rather than one by one.
+    let mut p = crc1;
     let n = 64 - len2.leading_zeros();
-
     for i in 0..n {
         if (len2 >> i & 1) != 0 {
             p = multiply(X2N_TABLE[(i & 0x1F) as usize], p);
         }
     }
 
-    multiply(p, crc1) ^ crc2
+    p ^ crc2
 }
 
 #[test]
