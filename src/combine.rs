@@ -21,6 +21,12 @@ fn multiply(a: u32, mut b: u32) -> u32 {
 }
 
 pub(crate) fn combine(crc1: u32, crc2: u32, len2: u64) -> u32 {
+    // Special case: If the length of the second chunk is zero, return the hash
+    // of the first chunk.
+    if len2 == 0 {
+        return crc1;
+    }
+
     // We are padding the first checksum with len2-amount of zeroes. For efficiency,
     // this is done in powers-of-two via a lookup table rather than one by one.
     let mut p = crc1;
@@ -36,6 +42,7 @@ pub(crate) fn combine(crc1: u32, crc2: u32, len2: u64) -> u32 {
 
 #[test]
 fn golden() {
+    assert_eq!(combine(0x0, 0x1, 0x0), 0x0);
     assert_eq!(combine(0xc401f8c9, 0x00000000, 0x0), 0xc401f8c9);
     assert_eq!(combine(0x7cba3d5e, 0xe7466d39, 0xb), 0x76365c4f);
     assert_eq!(combine(0x576c62d6, 0x123256e1, 0x47), 0x579a636);
