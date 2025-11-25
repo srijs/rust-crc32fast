@@ -19,7 +19,7 @@ impl State {
 
     #[cfg(feature = "std")]
     pub fn new(state: u32) -> Option<Self> {
-        if std::arch::is_aarch64_feature_detected!("crc") {
+        if cfg!(target_feature = "crc") && std::arch::is_aarch64_feature_detected!("crc") {
             // SAFETY: The conditions above ensure that all
             //         required instructions are supported by the CPU.
             Some(Self { state })

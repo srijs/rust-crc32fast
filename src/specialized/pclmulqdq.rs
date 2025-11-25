@@ -34,7 +34,10 @@ impl State {
 
     #[cfg(feature = "std")]
     pub fn new(state: u32) -> Option<Self> {
-        if is_x86_feature_detected!("pclmulqdq")
+        if cfg!(target_feature = "pclmulqdq")
+            && cfg!(target_feature = "sse2")
+            && cfg!(target_feature = "sse4.1")
+            && is_x86_feature_detected!("pclmulqdq")
             && is_x86_feature_detected!("sse2")
             && is_x86_feature_detected!("sse4.1")
         {
