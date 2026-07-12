@@ -35,6 +35,44 @@ fn bench_megabyte_specialized(b: &mut Bencher) {
     )
 }
 
+fn bench_16kb_baseline(b: &mut Bencher) {
+    bench(b, 16 * 1024, Hasher::internal_new_baseline(0, 0))
+}
+
+fn bench_16kb_specialized(b: &mut Bencher) {
+    bench(
+        b,
+        16 * 1024,
+        Hasher::internal_new_specialized(0, 0).unwrap(),
+    )
+}
+
+// Small and non-16-multiple ("awkward") sizes: these exercise the small-input clmul path and the
+// partial-block tail fold, and are where the pre-clmul table/scalar fallback was slowest.
+fn bench_16b_specialized(b: &mut Bencher) {
+    bench(b, 16, Hasher::internal_new_specialized(0, 0).unwrap())
+}
+
+fn bench_63b_specialized(b: &mut Bencher) {
+    bench(b, 63, Hasher::internal_new_specialized(0, 0).unwrap())
+}
+
+fn bench_127b_specialized(b: &mut Bencher) {
+    bench(b, 127, Hasher::internal_new_specialized(0, 0).unwrap())
+}
+
+fn bench_255b_specialized(b: &mut Bencher) {
+    bench(b, 255, Hasher::internal_new_specialized(0, 0).unwrap())
+}
+
+fn bench_511b_specialized(b: &mut Bencher) {
+    bench(b, 511, Hasher::internal_new_specialized(0, 0).unwrap())
+}
+
+fn bench_1000b_specialized(b: &mut Bencher) {
+    bench(b, 1000, Hasher::internal_new_specialized(0, 0).unwrap())
+}
+
 fn bench_combine_inner(b: &mut Bencher, i1: u32, l1: u64, i2: u32, l2: u64) {
     let h1 = Hasher::new_with_initial_len(i1, l1);
     let h2 = Hasher::new_with_initial_len(i2, l2);
@@ -64,11 +102,19 @@ fn bench_combine_64(b: &mut Bencher) {
 bencher::benchmark_group!(
     bench_baseline,
     bench_kilobyte_baseline,
+    bench_16kb_baseline,
     bench_megabyte_baseline
 );
 bencher::benchmark_group!(
     bench_specialized,
+    bench_16b_specialized,
+    bench_63b_specialized,
+    bench_127b_specialized,
+    bench_255b_specialized,
+    bench_511b_specialized,
+    bench_1000b_specialized,
     bench_kilobyte_specialized,
+    bench_16kb_specialized,
     bench_megabyte_specialized
 );
 bencher::benchmark_group!(
@@ -77,4 +123,8 @@ bencher::benchmark_group!(
     bench_combine_32,
     bench_combine_64
 );
-bencher::benchmark_main!(bench_baseline, bench_specialized, bench_combine);
+bencher::benchmark_main!(
+    bench_baseline,
+    bench_specialized,
+    bench_combine
+);
