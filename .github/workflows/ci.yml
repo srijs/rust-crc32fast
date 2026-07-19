@@ -56,7 +56,7 @@ jobs:
       # the legacy git-index protocol, which can take a very long time (or
       # effectively hang) to clone crates.io's now-huge index history.
       - name: Fetch dependencies
-        run: cargo fetch --locked
+        run: cargo fetch
       - name: Install Rust
         run: rustup update ${{ steps.msrv.outputs.version }} && rustup default ${{ steps.msrv.outputs.version }}
       # Dev-dependencies evolve more quickly than we'd like and don't keep to
