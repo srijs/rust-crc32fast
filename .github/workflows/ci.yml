@@ -51,15 +51,21 @@ jobs:
       - name: Get MSRV from Cargo.toml
         id: msrv
         run: echo "version=$(grep '^rust-version' Cargo.toml | sed 's/rust-version = "\(.*\)"/\1/')" >> $GITHUB_OUTPUT
+      # Fetch dependencies with the pre-installed (recent) cargo, which uses
+      # the sparse crates.io protocol. Cargo versions below 1.68 only speak
+      # the legacy git-index protocol, which can take a very long time (or
+      # effectively hang) to clone crates.io's now-huge index history.
+      - name: Fetch dependencies
+        run: cargo fetch --locked
       - name: Install Rust
         run: rustup update ${{ steps.msrv.outputs.version }} && rustup default ${{ steps.msrv.outputs.version }}
       # Dev-dependencies evolve more quickly than we'd like and don't keep to
       # our MSRV, so we only build the library here rather than run the test
       # suite (which would pull in dev-dependencies).
       - name: Build
-        run: cargo build
+        run: cargo build --offline
       - name: Build with no default features
-        run: cargo build --no-default-features
+        run: cargo build --no-default-features --offline
   asan:
     name: asan
     runs-on: ubuntu-latest
