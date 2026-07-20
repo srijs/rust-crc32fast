@@ -76,7 +76,13 @@ fn exhaustive_lengths_alignments_inits() {
 #[test]
 fn large_sizes() {
     for &len in &[
-        2048usize,
+        2047usize,
+        2048,
+        2049,
+        2175,
+        2176,
+        2303,
+        2304,
         4096,
         4097,
         8192,

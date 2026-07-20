@@ -41,46 +41,48 @@ pub struct State {
 impl State {
     #[cfg(not(feature = "std"))]
     fn detect() -> Option<Kind> {
-        if !(cfg!(target_feature = "pclmulqdq")
+        if cfg!(target_feature = "pclmulqdq")
             && cfg!(target_feature = "sse2")
-            && cfg!(target_feature = "sse4.1"))
+            && cfg!(target_feature = "sse4.1")
+            && cfg!(target_feature = "ssse3")
         {
-            return None;
+            #[cfg(stable_vpclmulqdq)]
+            {
+                if cfg!(target_feature = "avx512f") && cfg!(target_feature = "vpclmulqdq") {
+                    return Some(Kind::Avx512);
+                }
+                if cfg!(target_feature = "avx2") && cfg!(target_feature = "vpclmulqdq") {
+                    return Some(Kind::Avx2);
+                }
+            }
+
+            return Some(Kind::Sse);
         }
 
-        #[cfg(stable_vpclmulqdq)]
-        {
-            if cfg!(target_feature = "avx512f") && cfg!(target_feature = "vpclmulqdq") {
-                return Some(Kind::Avx512);
-            }
-            if cfg!(target_feature = "avx2") && cfg!(target_feature = "vpclmulqdq") {
-                return Some(Kind::Avx2);
-            }
-        }
-
-        Some(Kind::Sse)
+        None
     }
 
     #[cfg(feature = "std")]
     fn detect() -> Option<Kind> {
-        if !(is_x86_feature_detected!("pclmulqdq")
+        if is_x86_feature_detected!("pclmulqdq")
             && is_x86_feature_detected!("sse2")
-            && is_x86_feature_detected!("sse4.1"))
+            && is_x86_feature_detected!("sse4.1")
+            && is_x86_feature_detected!("ssse3")
         {
-            return None;
+            #[cfg(stable_vpclmulqdq)]
+            {
+                if is_x86_feature_detected!("avx512f") && is_x86_feature_detected!("vpclmulqdq") {
+                    return Some(Kind::Avx512);
+                }
+                if is_x86_feature_detected!("avx2") && is_x86_feature_detected!("vpclmulqdq") {
+                    return Some(Kind::Avx2);
+                }
+            }
+
+            return Some(Kind::Sse);
         }
 
-        #[cfg(stable_vpclmulqdq)]
-        {
-            if is_x86_feature_detected!("avx512f") && is_x86_feature_detected!("vpclmulqdq") {
-                return Some(Kind::Avx512);
-            }
-            if is_x86_feature_detected!("avx2") && is_x86_feature_detected!("vpclmulqdq") {
-                return Some(Kind::Avx2);
-            }
-        }
-
-        Some(Kind::Sse)
+        None
     }
 
     pub fn new(state: u32) -> Option<Self> {
@@ -123,6 +125,12 @@ const K5: i64 = 0x163cd6124;
 const P_X: i64 = 0x1DB710641;
 const U_PRIME: i64 = 0x1F7011641;
 
+// The wider kernels have progressively more streams to initialize and collapse. Keep their
+// crossovers conservative so short inputs do not pay that fixed cost.
+const MIN_FOLD_BY_4_BYTES: usize = 128;
+#[cfg(stable_vpclmulqdq)]
+const MIN_AVX512_BYTES: usize = 2 * 1024;
+
 // Fold constants for the wider strides. For a fold by `D` bits the pair is
 // `(reflect(x^(D+32) mod P), reflect(x^(D-32) mod P))`, as for `K1`/`K2` (D = 512) and
 // `K3`/`K4` (D = 128). AVX2 uses 8 streams (D = 1024), AVX-512 uses 16 streams (D = 2048).
@@ -149,7 +157,7 @@ unsafe fn calculate(crc: u32, mut data: &[u8]) -> u32 {
 
     // For 16..127 bytes a single-accumulator fold-by-1 is enough; the fold-by-4 setup below only
     // pays off once there are several 64-byte groups.
-    if data.len() < 128 {
+    if data.len() < MIN_FOLD_BY_4_BYTES {
         let mut x = get(&mut data);
         x = arch::_mm_xor_si128(x, arch::_mm_cvtsi32_si128(!crc as i32));
         return reduce_128_to_crc(x, data);
@@ -248,8 +256,8 @@ unsafe fn calculate_avx2(crc: u32, mut data: &[u8]) -> u32 {
     enable = "avx512f"
 )]
 unsafe fn calculate_avx512(crc: u32, mut data: &[u8]) -> u32 {
-    // Too small for the wide loop; use the 256-bit path.
-    if data.len() < 512 {
+    // Use a conservative crossover because the 16-stream setup and collapse are costly near 1 KiB.
+    if data.len() < MIN_AVX512_BYTES {
         return calculate_avx2(crc, data);
     }
 
@@ -300,6 +308,13 @@ unsafe fn calculate_avx512(crc: u32, mut data: &[u8]) -> u32 {
     x = reduce128(x, arch::_mm512_extracti32x4_epi32(v3, 1), k3k4);
     x = reduce128(x, arch::_mm512_extracti32x4_epi32(v3, 2), k3k4);
     x = reduce128(x, arch::_mm512_extracti32x4_epi32(v3, 3), k3k4);
+
+    // A substantial remainder is faster through SSE's complete fold-by-4 kernel than through the
+    // serial fold-by-1 tail below. Finalizing and restarting is valid because CRC updates compose.
+    if data.len() >= MIN_FOLD_BY_4_BYTES {
+        let crc = reduce_128_to_crc(x, &[]);
+        return calculate(crc, data);
+    }
 
     reduce_128_to_crc(x, data)
 }
@@ -485,7 +500,7 @@ mod test {
 
         for &len in &[
             0usize, 1, 15, 16, 17, 63, 64, 127, 128, 129, 255, 256, 257, 511, 512, 513, 1023, 1024,
-            1025, 4096, 8192, 8199,
+            1025, 2047, 2048, 2049, 2175, 2176, 2303, 2304, 4096, 8192, 8199,
         ] {
             for &offset in &[0usize, 1, 3, 7, 8, 15] {
                 if offset + len > data.len() {
