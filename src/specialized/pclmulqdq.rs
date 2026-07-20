@@ -41,46 +41,48 @@ pub struct State {
 impl State {
     #[cfg(not(feature = "std"))]
     fn detect() -> Option<Kind> {
-        if !(cfg!(target_feature = "pclmulqdq")
+        if cfg!(target_feature = "pclmulqdq")
             && cfg!(target_feature = "sse2")
-            && cfg!(target_feature = "sse4.1"))
+            && cfg!(target_feature = "sse4.1")
+            && cfg!(target_feature = "ssse3")
         {
-            return None;
+            #[cfg(stable_vpclmulqdq)]
+            {
+                if cfg!(target_feature = "avx512f") && cfg!(target_feature = "vpclmulqdq") {
+                    return Some(Kind::Avx512);
+                }
+                if cfg!(target_feature = "avx2") && cfg!(target_feature = "vpclmulqdq") {
+                    return Some(Kind::Avx2);
+                }
+            }
+
+            return Some(Kind::Sse);
         }
 
-        #[cfg(stable_vpclmulqdq)]
-        {
-            if cfg!(target_feature = "avx512f") && cfg!(target_feature = "vpclmulqdq") {
-                return Some(Kind::Avx512);
-            }
-            if cfg!(target_feature = "avx2") && cfg!(target_feature = "vpclmulqdq") {
-                return Some(Kind::Avx2);
-            }
-        }
-
-        Some(Kind::Sse)
+        None
     }
 
     #[cfg(feature = "std")]
     fn detect() -> Option<Kind> {
-        if !(is_x86_feature_detected!("pclmulqdq")
+        if is_x86_feature_detected!("pclmulqdq")
             && is_x86_feature_detected!("sse2")
-            && is_x86_feature_detected!("sse4.1"))
+            && is_x86_feature_detected!("sse4.1")
+            && is_x86_feature_detected!("ssse3")
         {
-            return None;
+            #[cfg(stable_vpclmulqdq)]
+            {
+                if is_x86_feature_detected!("avx512f") && is_x86_feature_detected!("vpclmulqdq") {
+                    return Some(Kind::Avx512);
+                }
+                if is_x86_feature_detected!("avx2") && is_x86_feature_detected!("vpclmulqdq") {
+                    return Some(Kind::Avx2);
+                }
+            }
+
+            return Some(Kind::Sse);
         }
 
-        #[cfg(stable_vpclmulqdq)]
-        {
-            if is_x86_feature_detected!("avx512f") && is_x86_feature_detected!("vpclmulqdq") {
-                return Some(Kind::Avx512);
-            }
-            if is_x86_feature_detected!("avx2") && is_x86_feature_detected!("vpclmulqdq") {
-                return Some(Kind::Avx2);
-            }
-        }
-
-        Some(Kind::Sse)
+        None
     }
 
     pub fn new(state: u32) -> Option<Self> {

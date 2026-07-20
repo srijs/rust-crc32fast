@@ -47,8 +47,8 @@ impl State {
     }
 }
 
-// Minimum aligned-region size (in 64-bit words) for the 3-way interleaved path to pay for its
-// two `combine` calls; smaller regions use the single-stream loop. ~1.5 KiB.
+// Conservative crossover: 64 words per stream gives the interleaved loop enough work to
+// amortize its two `combine` calls (3 * 64 * 8 bytes = 1.5 KiB).
 const MIN_TRIPLE_QUADS: usize = 192;
 
 // target_feature is necessary to allow rustc to inline the crc32* wrappers
