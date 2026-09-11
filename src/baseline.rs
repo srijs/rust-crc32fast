@@ -54,6 +54,40 @@ unsafe fn prefetch(ptr: *const u8) {
 )))]
 const unsafe fn prefetch(_: *const u8) {}
 
+#[rustfmt::skip]
+macro_rules! block {
+    ($current:expr, $crc:expr) => {{
+        let a = unsafe { $current.add(0).read_unaligned() } ^ $crc;
+        let b = unsafe { $current.add(1).read_unaligned() };
+        let c = unsafe { $current.add(2).read_unaligned() };
+        let d = unsafe { $current.add(3).read_unaligned() };
+
+        $current = unsafe { $current.add(4) };
+
+        let [a0, a1, a2, a3] = a.to_be_bytes();
+        let [b0, b1, b2, b3] = b.to_be_bytes();
+        let [c0, c1, c2, c3] = c.to_be_bytes();
+        let [d0, d1, d2, d3] = d.to_be_bytes();
+
+        $crc = CRC32C_TABLE[ 0][d0 as usize]
+            ^  CRC32C_TABLE[ 1][d1 as usize]
+            ^  CRC32C_TABLE[ 2][d2 as usize]
+            ^  CRC32C_TABLE[ 3][d3 as usize]
+            ^  CRC32C_TABLE[ 4][c0 as usize]
+            ^  CRC32C_TABLE[ 5][c1 as usize]
+            ^  CRC32C_TABLE[ 6][c2 as usize]
+            ^  CRC32C_TABLE[ 7][c3 as usize]
+            ^  CRC32C_TABLE[ 8][b0 as usize]
+            ^  CRC32C_TABLE[ 9][b1 as usize]
+            ^  CRC32C_TABLE[10][b2 as usize]
+            ^  CRC32C_TABLE[11][b3 as usize]
+            ^  CRC32C_TABLE[12][a0 as usize]
+            ^  CRC32C_TABLE[13][a1 as usize]
+            ^  CRC32C_TABLE[14][a2 as usize]
+            ^  CRC32C_TABLE[15][a3 as usize];
+    }};
+}
+
 pub(crate) fn update_fast_16(prev: u32, buf: &[u8]) -> u32 {
     const UNROLL: usize = 4;
     const BYTES_AT_ONCE: usize = 16 * UNROLL;
@@ -72,34 +106,7 @@ pub(crate) fn update_fast_16(prev: u32, buf: &[u8]) -> u32 {
 
         for _ in 0..UNROLL {
             // SAFETY: loop guard ensures 64 bytes remain for these 4 reads.
-            let one = u32::from_le(unsafe { current.read_unaligned() }) ^ crc;
-            current = unsafe { current.add(1) };
-
-            let two = u32::from_le(unsafe { current.read_unaligned() });
-            current = unsafe { current.add(1) };
-
-            let three = u32::from_le(unsafe { current.read_unaligned() });
-            current = unsafe { current.add(1) };
-
-            let four = u32::from_le(unsafe { current.read_unaligned() });
-            current = unsafe { current.add(1) };
-
-            crc = CRC32_TABLE[0][((four >> 24) & 0xFF) as usize]
-                ^ CRC32_TABLE[1][((four >> 16) & 0xFF) as usize]
-                ^ CRC32_TABLE[2][((four >> 8) & 0xFF) as usize]
-                ^ CRC32_TABLE[3][(four & 0xFF) as usize]
-                ^ CRC32_TABLE[4][((three >> 24) & 0xFF) as usize]
-                ^ CRC32_TABLE[5][((three >> 16) & 0xFF) as usize]
-                ^ CRC32_TABLE[6][((three >> 8) & 0xFF) as usize]
-                ^ CRC32_TABLE[7][(three & 0xFF) as usize]
-                ^ CRC32_TABLE[8][((two >> 24) & 0xFF) as usize]
-                ^ CRC32_TABLE[9][((two >> 16) & 0xFF) as usize]
-                ^ CRC32_TABLE[10][((two >> 8) & 0xFF) as usize]
-                ^ CRC32_TABLE[11][(two & 0xFF) as usize]
-                ^ CRC32_TABLE[12][((one >> 24) & 0xFF) as usize]
-                ^ CRC32_TABLE[13][((one >> 16) & 0xFF) as usize]
-                ^ CRC32_TABLE[14][((one >> 8) & 0xFF) as usize]
-                ^ CRC32_TABLE[15][(one & 0xFF) as usize];
+            block!(current, crc);
         }
 
         length -= BYTES_AT_ONCE;
@@ -108,34 +115,7 @@ pub(crate) fn update_fast_16(prev: u32, buf: &[u8]) -> u32 {
     while length >= 16 {
         // SAFETY: loop guard ensures 16 bytes remain for these 4 reads.
         // from_le makes the decoded word endianness-independent.
-        let one = u32::from_le(unsafe { current.read_unaligned() }) ^ crc;
-        current = unsafe { current.add(1) };
-
-        let two = u32::from_le(unsafe { current.read_unaligned() });
-        current = unsafe { current.add(1) };
-
-        let three = u32::from_le(unsafe { current.read_unaligned() });
-        current = unsafe { current.add(1) };
-
-        let four = u32::from_le(unsafe { current.read_unaligned() });
-        current = unsafe { current.add(1) };
-
-        crc = CRC32_TABLE[0][((four >> 24) & 0xFF) as usize]
-            ^ CRC32_TABLE[1][((four >> 16) & 0xFF) as usize]
-            ^ CRC32_TABLE[2][((four >> 8) & 0xFF) as usize]
-            ^ CRC32_TABLE[3][(four & 0xFF) as usize]
-            ^ CRC32_TABLE[4][((three >> 24) & 0xFF) as usize]
-            ^ CRC32_TABLE[5][((three >> 16) & 0xFF) as usize]
-            ^ CRC32_TABLE[6][((three >> 8) & 0xFF) as usize]
-            ^ CRC32_TABLE[7][(three & 0xFF) as usize]
-            ^ CRC32_TABLE[8][((two >> 24) & 0xFF) as usize]
-            ^ CRC32_TABLE[9][((two >> 16) & 0xFF) as usize]
-            ^ CRC32_TABLE[10][((two >> 8) & 0xFF) as usize]
-            ^ CRC32_TABLE[11][(two & 0xFF) as usize]
-            ^ CRC32_TABLE[12][((one >> 24) & 0xFF) as usize]
-            ^ CRC32_TABLE[13][((one >> 16) & 0xFF) as usize]
-            ^ CRC32_TABLE[14][((one >> 8) & 0xFF) as usize]
-            ^ CRC32_TABLE[15][(one & 0xFF) as usize];
+        block!(current, crc);
 
         length -= 16;
     }
