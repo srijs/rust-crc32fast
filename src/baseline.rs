@@ -31,8 +31,10 @@ impl State {
 ///
 /// Requires `sse`; `ptr` may be invalid (hint, never dereferenced)
 #[inline]
-#[target_feature(enable = "sse")]
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[cfg(all(
+    target_feature = "sse",
+    any(target_arch = "x86", target_arch = "x86_64"),
+))]
 unsafe fn prefetch(ptr: *const u8) {
     #[cfg(target_arch = "x86")]
     use core::arch::x86::{_mm_prefetch, _MM_HINT_T0};
@@ -46,7 +48,10 @@ unsafe fn prefetch(ptr: *const u8) {
 ///
 /// No-op: `ptr` is never used, so any value is safe.
 #[inline(always)]
-#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+#[cfg(not(all(
+    target_feature = "sse",
+    any(target_arch = "x86", target_arch = "x86_64"),
+)))]
 const unsafe fn prefetch(_: *const u8) {}
 
 pub(crate) fn update_fast_16(prev: u32, buf: &[u8]) -> u32 {
