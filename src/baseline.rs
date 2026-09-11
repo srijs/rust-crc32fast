@@ -27,36 +27,120 @@ impl State {
     }
 }
 
-pub(crate) fn update_fast_16(prev: u32, mut buf: &[u8]) -> u32 {
+/// # Safety
+///
+/// Requires `sse`; `ptr` may be invalid (hint, never dereferenced)
+#[inline]
+#[target_feature(enable = "sse")]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+unsafe fn prefetch(ptr: *const u8) {
+    #[cfg(target_arch = "x86")]
+    use core::arch::x86::{_mm_prefetch, _MM_HINT_T0};
+    #[cfg(target_arch = "x86_64")]
+    use core::arch::x86_64::{_mm_prefetch, _MM_HINT_T0};
+
+    _mm_prefetch::<_MM_HINT_T0>(ptr.cast::<i8>());
+}
+
+/// # Safety
+///
+/// No-op: `ptr` is never used, so any value is safe.
+#[inline(always)]
+#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+const unsafe fn prefetch(_: *const u8) {}
+
+pub(crate) fn update_fast_16(prev: u32, buf: &[u8]) -> u32 {
     const UNROLL: usize = 4;
     const BYTES_AT_ONCE: usize = 16 * UNROLL;
+    const PREFETCH_AHEAD: usize = 256;
 
     let mut crc = !prev;
+    #[allow(clippy::cast_ptr_alignment)]
+    let mut current = buf.as_ptr().cast::<u32>();
+    let mut length = buf.len();
 
-    while buf.len() >= BYTES_AT_ONCE {
-        for _ in 0..UNROLL {
-            let w0 = u32::from_le_bytes([buf[0], buf[1], buf[2], buf[3]]) ^ crc;
-            crc = CRC32_TABLE[0x0][buf[0xf] as usize]
-                ^ CRC32_TABLE[0x1][buf[0xe] as usize]
-                ^ CRC32_TABLE[0x2][buf[0xd] as usize]
-                ^ CRC32_TABLE[0x3][buf[0xc] as usize]
-                ^ CRC32_TABLE[0x4][buf[0xb] as usize]
-                ^ CRC32_TABLE[0x5][buf[0xa] as usize]
-                ^ CRC32_TABLE[0x6][buf[0x9] as usize]
-                ^ CRC32_TABLE[0x7][buf[0x8] as usize]
-                ^ CRC32_TABLE[0x8][buf[0x7] as usize]
-                ^ CRC32_TABLE[0x9][buf[0x6] as usize]
-                ^ CRC32_TABLE[0xa][buf[0x5] as usize]
-                ^ CRC32_TABLE[0xb][buf[0x4] as usize]
-                ^ CRC32_TABLE[0xc][(w0 >> 24) as usize]
-                ^ CRC32_TABLE[0xd][((w0 >> 16) & 0xFF) as usize]
-                ^ CRC32_TABLE[0xe][((w0 >> 8) & 0xFF) as usize]
-                ^ CRC32_TABLE[0xf][(w0 & 0xFF) as usize];
-            buf = &buf[16..];
+    while length >= BYTES_AT_ONCE + PREFETCH_AHEAD {
+        // SAFETY: offset within bounds per loop guard; prefetch never dereferences.
+        unsafe {
+            prefetch(current.cast::<u8>().add(PREFETCH_AHEAD));
         }
+
+        for _ in 0..UNROLL {
+            // SAFETY: loop guard ensures 64 bytes remain for these 4 reads.
+            let one = unsafe { current.read_unaligned() } ^ crc;
+            current = unsafe { current.add(1) };
+
+            let two = unsafe { current.read_unaligned() };
+            current = unsafe { current.add(1) };
+
+            let three = unsafe { current.read_unaligned() };
+            current = unsafe { current.add(1) };
+
+            let four = unsafe { current.read_unaligned() };
+            current = unsafe { current.add(1) };
+
+            crc = CRC32_TABLE[0][((four >> 24) & 0xFF) as usize]
+                ^ CRC32_TABLE[1][((four >> 16) & 0xFF) as usize]
+                ^ CRC32_TABLE[2][((four >> 8) & 0xFF) as usize]
+                ^ CRC32_TABLE[3][(four & 0xFF) as usize]
+                ^ CRC32_TABLE[4][((three >> 24) & 0xFF) as usize]
+                ^ CRC32_TABLE[5][((three >> 16) & 0xFF) as usize]
+                ^ CRC32_TABLE[6][((three >> 8) & 0xFF) as usize]
+                ^ CRC32_TABLE[7][(three & 0xFF) as usize]
+                ^ CRC32_TABLE[8][((two >> 24) & 0xFF) as usize]
+                ^ CRC32_TABLE[9][((two >> 16) & 0xFF) as usize]
+                ^ CRC32_TABLE[10][((two >> 8) & 0xFF) as usize]
+                ^ CRC32_TABLE[11][(two & 0xFF) as usize]
+                ^ CRC32_TABLE[12][((one >> 24) & 0xFF) as usize]
+                ^ CRC32_TABLE[13][((one >> 16) & 0xFF) as usize]
+                ^ CRC32_TABLE[14][((one >> 8) & 0xFF) as usize]
+                ^ CRC32_TABLE[15][(one & 0xFF) as usize];
+        }
+
+        length -= BYTES_AT_ONCE;
     }
 
-    update_slow(!crc, buf)
+    while length >= 16 {
+        // SAFETY: loop guard ensures 16 bytes remain for these 4 reads.
+        let one = unsafe { current.read_unaligned() } ^ crc;
+        current = unsafe { current.add(1) };
+
+        let two = unsafe { current.read_unaligned() };
+        current = unsafe { current.add(1) };
+
+        let three = unsafe { current.read_unaligned() };
+        current = unsafe { current.add(1) };
+
+        let four = unsafe { current.read_unaligned() };
+        current = unsafe { current.add(1) };
+
+        crc = CRC32_TABLE[0][((four >> 24) & 0xFF) as usize]
+            ^ CRC32_TABLE[1][((four >> 16) & 0xFF) as usize]
+            ^ CRC32_TABLE[2][((four >> 8) & 0xFF) as usize]
+            ^ CRC32_TABLE[3][(four & 0xFF) as usize]
+            ^ CRC32_TABLE[4][((three >> 24) & 0xFF) as usize]
+            ^ CRC32_TABLE[5][((three >> 16) & 0xFF) as usize]
+            ^ CRC32_TABLE[6][((three >> 8) & 0xFF) as usize]
+            ^ CRC32_TABLE[7][(three & 0xFF) as usize]
+            ^ CRC32_TABLE[8][((two >> 24) & 0xFF) as usize]
+            ^ CRC32_TABLE[9][((two >> 16) & 0xFF) as usize]
+            ^ CRC32_TABLE[10][((two >> 8) & 0xFF) as usize]
+            ^ CRC32_TABLE[11][(two & 0xFF) as usize]
+            ^ CRC32_TABLE[12][((one >> 24) & 0xFF) as usize]
+            ^ CRC32_TABLE[13][((one >> 16) & 0xFF) as usize]
+            ^ CRC32_TABLE[14][((one >> 8) & 0xFF) as usize]
+            ^ CRC32_TABLE[15][(one & 0xFF) as usize];
+
+        length -= 16;
+    }
+
+    if length == 0 {
+        return !crc;
+    }
+
+    // SAFETY: `current`/`length` describe the exact unread tail of `buf`.
+    let tail = unsafe { core::slice::from_raw_parts(current.cast::<u8>(), length) };
+    update_slow(!crc, tail)
 }
 
 pub(crate) fn update_slow(prev: u32, buf: &[u8]) -> u32 {
