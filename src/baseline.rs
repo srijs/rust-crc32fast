@@ -72,16 +72,16 @@ pub(crate) fn update_fast_16(prev: u32, buf: &[u8]) -> u32 {
 
         for _ in 0..UNROLL {
             // SAFETY: loop guard ensures 64 bytes remain for these 4 reads.
-            let one = unsafe { current.read_unaligned() } ^ crc;
+            let one = u32::from_le(unsafe { current.read_unaligned() }) ^ crc;
             current = unsafe { current.add(1) };
 
-            let two = unsafe { current.read_unaligned() };
+            let two = u32::from_le(unsafe { current.read_unaligned() });
             current = unsafe { current.add(1) };
 
-            let three = unsafe { current.read_unaligned() };
+            let three = u32::from_le(unsafe { current.read_unaligned() });
             current = unsafe { current.add(1) };
 
-            let four = unsafe { current.read_unaligned() };
+            let four = u32::from_le(unsafe { current.read_unaligned() });
             current = unsafe { current.add(1) };
 
             crc = CRC32_TABLE[0][((four >> 24) & 0xFF) as usize]
@@ -107,16 +107,17 @@ pub(crate) fn update_fast_16(prev: u32, buf: &[u8]) -> u32 {
 
     while length >= 16 {
         // SAFETY: loop guard ensures 16 bytes remain for these 4 reads.
-        let one = unsafe { current.read_unaligned() } ^ crc;
+        // from_le makes the decoded word endianness-independent.
+        let one = u32::from_le(unsafe { current.read_unaligned() }) ^ crc;
         current = unsafe { current.add(1) };
 
-        let two = unsafe { current.read_unaligned() };
+        let two = u32::from_le(unsafe { current.read_unaligned() });
         current = unsafe { current.add(1) };
 
-        let three = unsafe { current.read_unaligned() };
+        let three = u32::from_le(unsafe { current.read_unaligned() });
         current = unsafe { current.add(1) };
 
-        let four = unsafe { current.read_unaligned() };
+        let four = u32::from_le(unsafe { current.read_unaligned() });
         current = unsafe { current.add(1) };
 
         crc = CRC32_TABLE[0][((four >> 24) & 0xFF) as usize]
