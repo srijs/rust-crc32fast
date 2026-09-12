@@ -51,19 +51,21 @@ jobs:
       - name: Get MSRV from Cargo.toml
         id: msrv
         run: echo "version=$(grep '^rust-version' Cargo.toml | sed 's/rust-version = "\(.*\)"/\1/')" >> $GITHUB_OUTPUT
-      - name: Install Rust
-        run: rustup update ${{ steps.msrv.outputs.version }} && rustup default ${{ steps.msrv.outputs.version }}
       # The MSRV covers what we publish: the library and its normal
       # dependencies. Dev-dependencies are never compiled by anyone who depends
-      # on crc32fast, so they are not held to it, and we build the library here
-      # rather than run the test suite. Building is not enough on its own
-      # though -- cargo resolves dev-dependencies even for `cargo build`, so one
-      # that needs a newer cargo fails this job before the library is touched.
-      # Drop them from the manifest first so the job sees what ships.
+      # on crc32fast, so they are not held to it, which is why this job builds
+      # the library rather than running the test suite. Building alone does not
+      # keep them out though -- cargo resolves the whole graph, dev-dependencies
+      # included, before it builds anything, so one that needs a newer cargo
+      # fails this job before the library is touched. Strip them first, while
+      # the current stable cargo is still the active toolchain and can resolve
+      # them, and only then switch to the MSRV toolchain.
+      - name: Install cargo-hack
+        run: cargo install --force cargo-hack --locked
       - name: Remove dev-dependencies
-        run: |
-          awk '/^\[dev-dependencies/{skip=1; next} /^\[/{skip=0} !skip' Cargo.toml > Cargo.toml.tmp
-          mv Cargo.toml.tmp Cargo.toml
+        run: cargo hack --remove-dev-deps
+      - name: Install Rust
+        run: rustup update ${{ steps.msrv.outputs.version }} && rustup default ${{ steps.msrv.outputs.version }}
       - name: Build
         run: cargo build
       - name: Build with no default features
