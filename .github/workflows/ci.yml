@@ -19,7 +19,7 @@ jobs:
           - windows-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install Rust
         run: rustup update stable --no-self-update
       - name: Test in debug mode
@@ -32,7 +32,7 @@ jobs:
     name: nightly
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install Rust
         run: rustup update nightly
       - name: Test in debug mode
@@ -47,7 +47,7 @@ jobs:
     name: msrv
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Get MSRV from Cargo.toml
         id: msrv
         run: echo "version=$(grep '^rust-version' Cargo.toml | sed 's/rust-version = "\(.*\)"/\1/')" >> $GITHUB_OUTPUT
@@ -64,7 +64,7 @@ jobs:
     name: asan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install Rust
         run: rustup update nightly --no-self-update
       - name: Run address sanitizer
@@ -83,7 +83,7 @@ jobs:
           - riscv64gc-unknown-linux-gnu
           - s390x-unknown-linux-gnu
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install Rust
         run: rustup update --no-self-update
       - name: Install Cross
@@ -100,7 +100,7 @@ jobs:
         target:
           - wasm32-unknown-unknown
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install Rust
         run: rustup update --no-self-update
       - name: Add target
@@ -117,7 +117,7 @@ jobs:
         target:
           - aarch64-unknown-linux-gnu
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install Rust
         run: rustup update nightly --no-self-update && rustup default nightly
       - name: Add target
