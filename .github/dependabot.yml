@@ -10,8 +10,9 @@ updates:
         patterns:
           - "*"
 
-  # Library and dev-dependencies. The MSRV job only builds the library, so
-  # dev-dependency bumps that drop older compilers won't break it.
+  # Library and dev-dependencies. Dev-dependencies are not held to the MSRV:
+  # the msrv job drops them before building, since nothing depending on
+  # crc32fast ever compiles them.
   - package-ecosystem: cargo
     directory: /
     schedule:
