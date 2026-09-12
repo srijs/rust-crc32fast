@@ -1,6 +1,6 @@
 use bencher::Bencher;
 use crc32fast::Hasher;
-use rand::Rng;
+use rand::RngExt;
 
 fn bench(b: &mut Bencher, size: usize, hasher_init: Hasher) {
     let mut bytes = vec![0u8; size];
