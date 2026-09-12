@@ -4,7 +4,7 @@ use rand::Rng;
 
 fn bench(b: &mut Bencher, size: usize, hasher_init: Hasher) {
     let mut bytes = vec![0u8; size];
-    rand::thread_rng().fill(&mut bytes[..]);
+    rand::rng().fill(&mut bytes[..]);
 
     b.iter(|| {
         let mut hasher = hasher_init.clone();
@@ -113,17 +113,17 @@ fn bench_combine_inner(b: &mut Bencher, i1: u32, l1: u64, i2: u32, l2: u64) {
 }
 
 fn bench_combine_16(b: &mut Bencher) {
-    let (i1, l1, i2, l2): (u32, u64, u32, u16) = rand::thread_rng().gen();
+    let (i1, l1, i2, l2): (u32, u64, u32, u16) = rand::rng().random();
     bench_combine_inner(b, i1, l1, i2, u64::from(l2))
 }
 
 fn bench_combine_32(b: &mut Bencher) {
-    let (i1, l1, i2, l2): (u32, u64, u32, u32) = rand::thread_rng().gen();
+    let (i1, l1, i2, l2): (u32, u64, u32, u32) = rand::rng().random();
     bench_combine_inner(b, i1, l1, i2, u64::from(l2))
 }
 
 fn bench_combine_64(b: &mut Bencher) {
-    let (i1, l1, i2, l2): (u32, u64, u32, u64) = rand::thread_rng().gen();
+    let (i1, l1, i2, l2): (u32, u64, u32, u64) = rand::rng().random();
     bench_combine_inner(b, i1, l1, i2, l2)
 }
 

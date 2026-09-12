@@ -10,8 +10,9 @@ updates:
         patterns:
           - "*"
 
-  # Library and dev-dependencies. The MSRV job only builds the library, so
-  # dev-dependency bumps that drop older compilers won't break it.
+  # Library and dev-dependencies. Note that the MSRV job runs `cargo build`,
+  # which resolves dev-dependencies even though it never compiles them, so a
+  # dev-dependency that cargo 1.63 cannot *resolve* still fails that job.
   - package-ecosystem: cargo
     directory: /
     schedule:
@@ -20,6 +21,13 @@ updates:
       cargo:
         patterns:
           - "*"
+    ignore:
+      # rand 0.10 is edition 2024 / rust-version 1.85 and its feature table
+      # uses syntax cargo 1.63 cannot resolve, so the msrv job fails before it
+      # builds anything. Drop this once the MSRV reaches 1.85.
+      - dependency-name: rand
+        versions:
+          - ">= 0.10"
 
   # The fuzz crate is a separate, unpublished package with its own manifest.
   - package-ecosystem: cargo
