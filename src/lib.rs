@@ -57,16 +57,11 @@ pub fn hash(buf: &[u8]) -> u32 {
 }
 
 #[derive(Clone)]
-enum State {
-    Baseline(baseline::State),
-    Specialized(specialized::State),
-}
-
-#[derive(Clone)]
 /// Represents an in-progress CRC32 computation.
 pub struct Hasher {
     amount: u64,
-    state: State,
+    state: u32,
+    spec: Option<specialized::State>,
 }
 
 const DEFAULT_INIT_STATE: u32 = 0;
@@ -103,58 +98,47 @@ impl Hasher {
     pub fn internal_new_baseline(init: u32, amount: u64) -> Self {
         Hasher {
             amount,
-            state: State::Baseline(baseline::State::new(init)),
+            state: init,
+            spec: None,
         }
     }
 
     #[doc(hidden)]
     // Internal-only API. Don't use.
     pub fn internal_new_specialized(init: u32, amount: u64) -> Option<Self> {
-        {
-            if let Some(state) = specialized::State::new(init) {
-                return Some(Hasher {
-                    amount,
-                    state: State::Specialized(state),
-                });
-            }
-        }
-        None
+        Some(Hasher {
+            amount,
+            state: init,
+            spec: Some(specialized::State::new()?),
+        })
     }
 
     /// Process the given byte slice and update the hash state.
     pub fn update(&mut self, buf: &[u8]) {
         self.amount += buf.len() as u64;
-        match self.state {
-            State::Baseline(ref mut state) => state.update(buf),
-            State::Specialized(ref mut state) => state.update(buf),
-        }
+        self.state = match &self.spec {
+            None => baseline::update_fast_16(self.state, buf),
+            Some(spec) => spec.update(self.state, buf),
+        };
     }
 
     /// Finalize the hash state and return the computed CRC32 value.
+    #[inline]
     pub fn finalize(self) -> u32 {
-        match self.state {
-            State::Baseline(state) => state.finalize(),
-            State::Specialized(state) => state.finalize(),
-        }
+        self.state
     }
 
     /// Reset the hash state.
+    #[inline]
     pub fn reset(&mut self) {
+        self.state = 0;
         self.amount = 0;
-        match self.state {
-            State::Baseline(ref mut state) => state.reset(),
-            State::Specialized(ref mut state) => state.reset(),
-        }
     }
 
     /// Combine the hash state with the hash state for the subsequent block of bytes.
     pub fn combine(&mut self, other: &Self) {
         self.amount += other.amount;
-        let other_crc = other.clone().finalize();
-        match self.state {
-            State::Baseline(ref mut state) => state.combine(other_crc, other.amount),
-            State::Specialized(ref mut state) => state.combine(other_crc, other.amount),
-        }
+        self.state = combine::combine(self.state, other.state, other.amount);
     }
 }
 
