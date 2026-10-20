@@ -122,6 +122,28 @@ impl Hasher {
         };
     }
 
+    /// Returns the total number of bytes represented by this hash state.
+    ///
+    /// This includes the length passed to [`Hasher::new_with_initial_len`] and
+    /// the lengths of any hash states added with [`Hasher::combine`].
+    /// [`Hasher::reset`] sets the length back to zero.
+    ///
+    /// A state created with [`Hasher::new_with_initial`] starts with a length
+    /// of zero because the length of the initial state is not known.
+    ///
+    /// ```
+    /// use crc32fast::Hasher;
+    ///
+    /// let mut hasher = Hasher::new();
+    /// hasher.update(b"hello");
+    /// hasher.update(b" world");
+    /// assert_eq!(hasher.total_len(), 11);
+    /// ```
+    #[inline]
+    pub fn total_len(&self) -> u64 {
+        self.amount
+    }
+
     /// Finalize the hash state and return the computed CRC32 value.
     #[inline]
     pub fn finalize(self) -> u32 {
@@ -167,6 +189,46 @@ impl hash::Hasher for Hasher {
 #[cfg(test)]
 mod test {
     use super::Hasher;
+
+    #[test]
+    fn total_len_tracks_resumed_and_combined_blocks() {
+        let prefix = b"hello";
+        let suffix = b" world";
+        let mut hasher = Hasher::new_with_initial_len(super::hash(prefix), prefix.len() as u64);
+        assert_eq!(hasher.total_len(), 5);
+        hasher.update(b" ");
+        assert_eq!(hasher.total_len(), 6);
+
+        let mut remaining = Hasher::new();
+        remaining.update(&suffix[1..]);
+        hasher.combine(&remaining);
+        assert_eq!(hasher.total_len(), 11);
+        assert_eq!(hasher.clone().finalize(), super::hash(b"hello world"));
+        assert_eq!(remaining.total_len(), 5);
+
+        hasher.reset();
+        assert_eq!(hasher.total_len(), 0);
+        hasher.update(b"again");
+        assert_eq!(hasher.total_len(), 5);
+        assert_eq!(hasher.finalize(), super::hash(b"again"));
+    }
+
+    #[test]
+    fn total_len_for_empty_and_unknown_initial_length() {
+        let mut hasher = Hasher::new();
+        assert_eq!(hasher.total_len(), 0);
+        hasher.update(b"");
+        hasher.combine(&Hasher::new());
+        assert_eq!(hasher.total_len(), 0);
+        assert_eq!(
+            Hasher::new_with_initial(super::hash(b"prefix")).total_len(),
+            0
+        );
+        assert_eq!(
+            Hasher::new_with_initial_len(0, u64::MAX).total_len(),
+            u64::MAX
+        );
+    }
 
     quickcheck::quickcheck! {
         fn combine(bytes_1: Vec<u8>, bytes_2: Vec<u8>) -> bool {
