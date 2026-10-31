@@ -84,6 +84,7 @@ impl State {
         None
     }
 
+    #[inline]
     pub fn new() -> Option<Self> {
         // SAFETY: `detect` only returns a `Kind` whose instructions the CPU supports.
         Self::detect().map(|kind| Self { kind })
