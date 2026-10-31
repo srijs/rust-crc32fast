@@ -39,6 +39,7 @@ pub struct State {
 
 impl State {
     #[cfg(not(feature = "std"))]
+    #[inline]
     fn detect() -> Option<Kind> {
         if cfg!(target_feature = "pclmulqdq")
             && cfg!(target_feature = "sse2")
@@ -62,6 +63,7 @@ impl State {
     }
 
     #[cfg(feature = "std")]
+    #[inline]
     fn detect() -> Option<Kind> {
         if is_x86_feature_detected!("pclmulqdq")
             && is_x86_feature_detected!("sse2")
