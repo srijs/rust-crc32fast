@@ -13,6 +13,10 @@
 //! rely on `VPCLMULQDQ` intrinsics stabilized in Rust 1.89 and are only compiled when the
 //! `stable_vpclmulqdq` cfg is set by `build.rs`, leaving the crate MSRV unchanged otherwise. The
 //! best variant supported by the running CPU is chosen at runtime.
+//!
+//! Each `unsafe fn` here is unsafe only because it needs the CPU features in its
+//! `#[target_feature]` list (PCLMULQDQ for `reduce128`). None of them has a memory-safety
+//! precondition: every load is bounds-checked.
 
 #[cfg(target_arch = "x86")]
 use core::arch::x86 as arch;
@@ -94,7 +98,9 @@ impl State {
 
     #[inline]
     pub fn update(&self, state: u32, buf: &[u8]) -> u32 {
-        // SAFETY: `State::new` ensured the CPU supports the instructions for `self.kind`.
+        // SAFETY: The kernels are only unsafe because the CPU might lack their target features.
+        // `detect` checked every feature listed on the kernel for `self.kind`, and `kind` can't be
+        // changed after `new`.
         unsafe {
             match self.kind {
                 Kind::Sse => calculate(state, buf),
@@ -429,9 +435,16 @@ unsafe fn reduce512(a: arch::__m512i, b: arch::__m512i, keys: arch::__m512i) -> 
     arch::_mm512_xor_si512(arch::_mm512_xor_si512(b, t1), t2)
 }
 
-unsafe fn get(a: &mut &[u8]) -> arch::__m128i {
-    debug_assert!(a.len() >= 16);
-    let r = arch::_mm_loadu_si128(a.as_ptr() as *const arch::__m128i);
+// The loads below index `a[..N]` before reading through its pointer, so a miscounted length panics
+// instead of reading out of bounds. The callers' loop conditions already imply the check, so it
+// compiles away: the kernels' machine code is unchanged.
+
+/// Loads the next 16 bytes of `a` as a vector and advances `a` past them.
+#[inline]
+fn get(a: &mut &[u8]) -> arch::__m128i {
+    // SAFETY: `a[..16]` is 16 readable bytes, `_mm_loadu_si128` doesn't need them aligned, and SSE2
+    // is enabled for the whole build (`specialized/mod.rs` only compiles this module when it is).
+    let r = unsafe { arch::_mm_loadu_si128(a[..16].as_ptr() as *const arch::__m128i) };
     *a = &a[16..];
     r
 }
@@ -440,8 +453,7 @@ unsafe fn get(a: &mut &[u8]) -> arch::__m128i {
 #[target_feature(enable = "avx")]
 #[inline]
 unsafe fn get256(a: &mut &[u8]) -> arch::__m256i {
-    debug_assert!(a.len() >= 32);
-    let r = arch::_mm256_loadu_si256(a.as_ptr() as *const arch::__m256i);
+    let r = arch::_mm256_loadu_si256(a[..32].as_ptr() as *const arch::__m256i);
     *a = &a[32..];
     r
 }
@@ -451,8 +463,7 @@ unsafe fn get256(a: &mut &[u8]) -> arch::__m256i {
 #[target_feature(enable = "avx512f")]
 #[inline]
 unsafe fn get512(a: &mut &[u8]) -> arch::__m512i {
-    debug_assert!(a.len() >= 64);
-    let r = arch::_mm512_loadu_si512(a.as_ptr() as *const _);
+    let r = arch::_mm512_loadu_si512(a[..64].as_ptr() as *const _);
     *a = &a[64..];
     r
 }
