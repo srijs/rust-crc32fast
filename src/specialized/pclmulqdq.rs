@@ -338,9 +338,8 @@ unsafe fn reduce_128_to_crc(mut x: arch::__m128i, mut data: &[u8]) -> u32 {
         let overflow = arch::_mm_shuffle_epi8(x, shl);
         x = arch::_mm_shuffle_epi8(x, shr);
 
-        let mut part = [0u8; 16];
-        part[..n].copy_from_slice(data);
-        let part = arch::_mm_loadu_si128(part.as_ptr() as *const arch::__m128i);
+        let (lo, hi) = partial_words(data);
+        let part = arch::_mm_set_epi64x(hi as i64, lo as i64);
         x = arch::_mm_xor_si128(x, arch::_mm_shuffle_epi8(part, shl));
 
         x = reduce128(overflow, x, k3k4);
@@ -454,6 +453,29 @@ unsafe fn get512(a: &mut &[u8]) -> arch::__m512i {
     let r = arch::_mm512_loadu_si512(a.as_ptr() as *const _);
     *a = &a[64..];
     r
+}
+
+/// Packs a final partial block of 1..=15 bytes into two zero-padded little-endian words, using
+/// overlapping loads. Building it in registers avoids copying through a stack buffer, whose narrow
+/// stores the following 16-byte load cannot forward from.
+#[inline]
+fn partial_words(data: &[u8]) -> (u64, u64) {
+    let n = data.len();
+    debug_assert!(n > 0 && n < 16);
+    let v: u128 = if n >= 8 {
+        let lo = u64::from_le_bytes(data[..8].try_into().unwrap());
+        let hi = u64::from_le_bytes(data[n - 8..].try_into().unwrap());
+        lo as u128 | (hi as u128) << (8 * (n - 8))
+    } else if n >= 4 {
+        let lo = u32::from_le_bytes(data[..4].try_into().unwrap());
+        let hi = u32::from_le_bytes(data[n - 4..].try_into().unwrap());
+        lo as u128 | (hi as u128) << (8 * (n - 4))
+    } else {
+        data[0] as u128
+            | (data[n / 2] as u128) << (8 * (n / 2))
+            | (data[n - 1] as u128) << (8 * (n - 1))
+    };
+    (v as u64, (v >> 64) as u64)
 }
 
 #[cfg(test)]
