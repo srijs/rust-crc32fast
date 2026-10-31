@@ -143,7 +143,7 @@ const K_2048_HIGH: i64 = 0x1322d1430;
 unsafe fn calculate(crc: u32, mut data: &[u8]) -> u32 {
     // Below 16 bytes there isn't even a single full block to load, so use the scalar fallback.
     if data.len() < 16 {
-        return crate::baseline::update_slow(crc, data);
+        return crate::baseline::update_short(crc, data);
     }
 
     // For 16..127 bytes a single-accumulator fold-by-1 is enough; the fold-by-4 setup below only
