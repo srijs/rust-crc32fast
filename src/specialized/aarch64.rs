@@ -27,8 +27,8 @@ impl State {
     }
 
     pub fn update(&self, state: u32, buf: &[u8]) -> u32 {
-        // SAFETY: The `State::new` constructor ensures that all
-        //         required instructions are supported by the CPU.
+        // SAFETY: Calling a `#[target_feature]` function is only unsafe because the CPU might lack
+        // that feature, and a `State` only exists if `new` found the `crc` feature.
         unsafe { calculate(state, buf) }
     }
 }
@@ -41,25 +41,34 @@ impl State {
 const LONG: usize = 32768;
 const SHORT: usize = 512;
 
-// The 3-way loop advances each chain four words at a time.
+// The 3-way loop advances each chain four words (32 bytes) at a time, so blocks leave no remainder.
 const _: () = assert!(LONG % 32 == 0 && SHORT % 32 == 0);
 
 static LONG_SHIFT: [[u32; 256]; 4] = crate::combine::shift_table(LONG as u64);
 static SHORT_SHIFT: [[u32; 256]; 4] = crate::combine::shift_table(SHORT as u64);
 
+/// Reads the `i`-th 8-byte word of `b` as a little-endian `u64`, the byte order `crc32x` expects.
+#[inline(always)]
+fn quad(b: &[u8], i: usize) -> u64 {
+    u64::from_le_bytes(b[i * 8..i * 8 + 8].try_into().unwrap())
+}
+
 // target_feature is necessary to allow rustc to inline the crc32* wrappers
 #[target_feature(enable = "crc")]
-pub unsafe fn calculate(crc: u32, data: &[u8]) -> u32 {
-    let (pre_quad, mut quads, post_quad) = data.align_to::<u64>();
+unsafe fn calculate(crc: u32, data: &[u8]) -> u32 {
+    // Split the input into unaligned leading bytes, 8-byte-aligned words, and trailing bytes.
+    let head = data.as_ptr().align_offset(8).min(data.len());
+    let (pre_quad, rest) = data.split_at(head);
+    let (mut quads, post_quad) = rest.split_at(rest.len() / 8 * 8);
 
     // Unaligned leading bytes, then switch to the internal (bit-inverted) state.
     let mut c0 = !crc_bytes(crc, pre_quad);
 
     // A single `crc32d` chain is latency-bound: each instruction depends on the previous result.
     // While enough words remain, advance three independent chains over three consecutive blocks of
-    // `n` words. B and C start from a zero state, so appending them to A is linear: shift A's state
+    // `n` bytes. B and C start from a zero state, so appending them to A is linear: shift A's state
     // past B's bytes and XOR in B's state, then the same for C.
-    for &(n, shift) in &[(LONG / 8, &LONG_SHIFT), (SHORT / 8, &SHORT_SHIFT)] {
+    for &(n, shift) in &[(LONG, &LONG_SHIFT), (SHORT, &SHORT_SHIFT)] {
         while quads.len() >= 3 * n {
             let (a, rest) = quads.split_at(n);
             let (b, rest) = rest.split_at(n);
@@ -69,14 +78,14 @@ pub unsafe fn calculate(crc: u32, data: &[u8]) -> u32 {
             let mut c1 = 0;
             let mut c2 = 0;
             for ((qa, qb), qc) in a
-                .chunks_exact(4)
-                .zip(b.chunks_exact(4))
-                .zip(c.chunks_exact(4))
+                .chunks_exact(32)
+                .zip(b.chunks_exact(32))
+                .zip(c.chunks_exact(32))
             {
                 for k in 0..4 {
-                    c0 = arch::__crc32d(c0, qa[k]);
-                    c1 = arch::__crc32d(c1, qb[k]);
-                    c2 = arch::__crc32d(c2, qc[k]);
+                    c0 = arch::__crc32d(c0, quad(qa, k));
+                    c1 = arch::__crc32d(c1, quad(qb, k));
+                    c2 = arch::__crc32d(c2, quad(qc, k));
                 }
             }
             c0 = crate::combine::shift(shift, c0) ^ c1;
@@ -89,26 +98,27 @@ pub unsafe fn calculate(crc: u32, data: &[u8]) -> u32 {
     crc_bytes(r, post_quad)
 }
 
+/// CRCs a byte slice whose length is a multiple of 8, a word at a time.
 #[target_feature(enable = "crc")]
-unsafe fn crc_quads(crc: u32, quads: &[u64]) -> u32 {
+unsafe fn crc_quads(crc: u32, quads: &[u8]) -> u32 {
     let mut c = !crc;
 
     // unrolling increases performance by a lot
-    let mut quad_iter = quads.chunks_exact(8);
+    let mut quad_iter = quads.chunks_exact(64);
     for chunk in &mut quad_iter {
-        c = arch::__crc32d(c, chunk[0]);
-        c = arch::__crc32d(c, chunk[1]);
-        c = arch::__crc32d(c, chunk[2]);
-        c = arch::__crc32d(c, chunk[3]);
-        c = arch::__crc32d(c, chunk[4]);
-        c = arch::__crc32d(c, chunk[5]);
-        c = arch::__crc32d(c, chunk[6]);
-        c = arch::__crc32d(c, chunk[7]);
+        c = arch::__crc32d(c, quad(chunk, 0));
+        c = arch::__crc32d(c, quad(chunk, 1));
+        c = arch::__crc32d(c, quad(chunk, 2));
+        c = arch::__crc32d(c, quad(chunk, 3));
+        c = arch::__crc32d(c, quad(chunk, 4));
+        c = arch::__crc32d(c, quad(chunk, 5));
+        c = arch::__crc32d(c, quad(chunk, 6));
+        c = arch::__crc32d(c, quad(chunk, 7));
     }
     c = quad_iter
         .remainder()
-        .iter()
-        .fold(c, |acc, &q| arch::__crc32d(acc, q));
+        .chunks_exact(8)
+        .fold(c, |acc, q| arch::__crc32d(acc, quad(q, 0)));
 
     !c
 }
