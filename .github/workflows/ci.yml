@@ -75,6 +75,21 @@ jobs:
         run: cargo build
       - name: Build with no default features
         run: cargo build --no-default-features
+      # Checking another target needs only its standard library, not a cross
+      # linker. At the MSRV, aarch64 gets the baseline implementation.
+      - name: Check aarch64
+        run: |
+          rustup target add aarch64-unknown-linux-gnu
+          cargo check --target aarch64-unknown-linux-gnu
+          cargo check --target aarch64-unknown-linux-gnu --no-default-features
+      # 1.80 is the oldest rustc that compiles the aarch64 kernels, the version
+      # `build.rs` sets `stable_arm_crc32_intrinsics` from; keep the two in
+      # step.
+      - name: Check aarch64 on 1.80
+        run: |
+          rustup toolchain install 1.80 --profile minimal --target aarch64-unknown-linux-gnu --no-self-update
+          cargo +1.80 check --target aarch64-unknown-linux-gnu
+          cargo +1.80 check --target aarch64-unknown-linux-gnu --no-default-features
   asan:
     name: asan
     runs-on: ubuntu-latest
