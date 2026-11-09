@@ -43,7 +43,8 @@ This crate contains multiple CRC32 implementations:
   registers, folding many independent streams per instruction (compiled with Rust 1.89+; the
   crate's minimum supported Rust version is otherwise unchanged)
 - An optimized implementation for `aarch64` using `crc32` instructions, with a 3-way interleaved
-  variant that hides instruction latency on larger inputs
+  variant that hides instruction latency on larger inputs, and, from 64 bytes on CPUs with `pmull`
+  (the `aes` feature), one that folds 4 to 16 independent streams with carry-less multiplies
 
 Calling the `Hasher::new` constructor at runtime will perform a feature detection to select the most
 optimal implementation for the current CPU feature set.

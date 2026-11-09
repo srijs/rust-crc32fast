@@ -38,6 +38,20 @@ const fn x8n(len: u64) -> u32 {
     p
 }
 
+/// The constants that fold a 128-bit accumulator forward by `bits` bits with two carry-less
+/// multiplies: `(x^(bits + 32), x^(bits - 32))` modulo p(x), reflected, as 33-bit values (the
+/// `K1`..`K4` of `specialized/pclmulqdq.rs`, which a test checks).
+#[cfg_attr(
+    not(all(stable_arm_crc32_intrinsics, target_arch = "aarch64")),
+    allow(dead_code)
+)]
+pub(crate) const fn fold_keys(bits: u64) -> [u64; 2] {
+    [
+        (x8n((bits + 32) / 8) as u64) << 1,
+        (x8n((bits - 32) / 8) as u64) << 1,
+    ]
+}
+
 /// Builds tables that append `len` zero bytes to a CRC state a byte at a time: the new state is
 /// the XOR of `table[k][(state >> (8 * k)) & 0xFF]` for `k` in `0..4`.
 #[cfg_attr(
@@ -90,6 +104,14 @@ pub(crate) fn combine(crc1: u32, crc2: u32, len2: u64) -> u32 {
     }
 
     p ^ crc2
+}
+
+#[test]
+fn fold_keys_match_the_x86_constants() {
+    assert_eq!(fold_keys(128), [0x1751997d0, 0x0ccaa009e]);
+    assert_eq!(fold_keys(512), [0x154442bd4, 0x1c6e41596]);
+    assert_eq!(fold_keys(1024), [0x1e88ef372, 0x14a7fe880]);
+    assert_eq!(fold_keys(2048), [0x11542778a, 0x1322d1430]);
 }
 
 #[test]
