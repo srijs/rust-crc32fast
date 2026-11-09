@@ -310,6 +310,26 @@ mod test {
         ]
     }
 
+    /// Set by CI, on runners whose CPU features it knows, to the name of the kernel detection
+    /// should pick: "none" (no `crc` feature), "crc" (the `crc32` chains only) or "pmull" (folding
+    /// with `PMULL` for longer inputs, too).
+    const EXPECT: &str = "CRC32FAST_EXPECT";
+
+    #[test]
+    fn picks_the_expected_kernel() {
+        // Unset or "" on runners whose CPU CI does not pin down.
+        let want = std::env::var(EXPECT).unwrap_or_default();
+        if want.is_empty() {
+            return;
+        }
+        let got = match super::State::new() {
+            None => "none",
+            Some(_) if super::has_pmull() => "pmull",
+            Some(_) => "crc",
+        };
+        assert_eq!(got, want, "{EXPECT}");
+    }
+
     quickcheck::quickcheck! {
         fn check_against_baseline(init: u32, chunks: Vec<(Vec<u8>, usize)>) -> bool {
             kernels().iter().all(|kernel| {
