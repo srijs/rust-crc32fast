@@ -32,7 +32,9 @@
 //! - An optimized implementation for modern `x86` using `sse` and `pclmulqdq` instructions
 //! - Wider `x86` implementations using `vpclmulqdq` on 256-bit (`avx2`) and 512-bit (`avx512f`)
 //!   registers (available when built with Rust 1.89 or newer)
-//! - An optimized implementation for `aarch64` using `crc32` instructions
+//! - An optimized implementation for `aarch64` using `crc32` instructions, interleaving three
+//!   chains on larger inputs, and from 64 bytes on CPUs with `pmull` (the `aes` feature), one that
+//!   folds 4 to 16 independent streams with carry-less multiplies
 //!
 //! Calling the [`Hasher::new`] constructor at runtime will perform a feature detection to select the most
 //! optimal implementation for the current CPU feature set.
