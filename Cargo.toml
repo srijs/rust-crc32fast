@@ -1,6 +1,6 @@
 [package]
 name = "crc32fast"
-version = "1.5.4"
+version = "1.5.5"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 authors = [
