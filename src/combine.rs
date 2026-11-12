@@ -39,10 +39,16 @@ const fn x8n(len: u64) -> u32 {
 }
 
 /// The constants that fold a 128-bit accumulator forward by `bits` bits with two carry-less
-/// multiplies: `(x^(bits + 32), x^(bits - 32))` modulo p(x), reflected, as 33-bit values (the
-/// `K1`..`K4` of `specialized/pclmulqdq.rs`, which a test checks).
+/// multiplies: `(x^(bits + 32), x^(bits - 32))` modulo p(x), reflected, as 33-bit values. Both
+/// SIMD backends fold with them; a test checks them against the published x86 constants.
 #[cfg_attr(
-    not(all(stable_arm_crc32_intrinsics, target_arch = "aarch64")),
+    not(any(
+        all(stable_arm_crc32_intrinsics, target_arch = "aarch64"),
+        all(
+            target_feature = "sse2",
+            any(target_arch = "x86", target_arch = "x86_64")
+        )
+    )),
     allow(dead_code)
 )]
 pub(crate) const fn fold_keys(bits: u64) -> [u64; 2] {
