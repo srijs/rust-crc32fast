@@ -117,10 +117,10 @@ const K1: i64 = 0x154442bd4;
 const K2: i64 = 0x1c6e41596;
 const K3: i64 = 0x1751997d0;
 const K4: i64 = 0x0ccaa009e;
-const K5: i64 = 0x163cd6124;
 
-const P_X: i64 = 0x1DB710641;
-const U_PRIME: i64 = 0x1F7011641;
+/// Barrett reduction constants: `floor(x^95 / G(x))` and `G(x)`, bit-reflected.
+const BARRETT_MU: i64 = 0xb4e5b025f7011641_u64 as i64;
+const BARRETT_G: i64 = 0x1db710641;
 
 // The wider kernels have progressively more streams to initialize and collapse. Keep their
 // crossovers conservative so short inputs do not pay that fixed cost.
@@ -353,59 +353,21 @@ unsafe fn reduce_128_to_crc(mut x: arch::__m128i, mut data: &[u8]) -> u32 {
         x = reduce128(overflow, x, k3k4);
     }
 
-    // Perform step 3, reduction from 128 bits to 64 bits. This is
-    // significantly different from the paper and basically doesn't follow it
-    // at all. It's not really clear why, but implementations of this algorithm
-    // in Chrome/Linux diverge in the same way. It is beyond me why this is
-    // different than the paper, maybe the paper has like errata or something?
-    // Unclear.
+    // Reduce the 128-bit message polynomial to its CRC: multiply by `x^32` and reduce modulo
+    // `G(x)`. Fold the low 64 bits (the high-order terms, since the bits are reflected) into the
+    // high 64, leaving 96 bits. A Barrett reduction with a 64-bit quotient estimate,
+    // `floor(x^95 / G(x))`, takes those to 32 without folding them to 64 first.
     //
-    // It's also not clear to me what's actually happening here and/or why, but
-    // algebraically what's happening is:
-    //
-    // x = (x[0:63] • K4) ^ x[64:127]           // 96 bit result
-    // x = ((x[0:31] as u64) • K5) ^ x[32:95]   // 64 bit result
-    //
-    // It's... not clear to me what's going on here. The paper itself is pretty
-    // vague on this part but definitely uses different constants at least.
-    // It's not clear to me, reading the paper, where the xor operations are
-    // happening or why things are shifting around. This implementation...
-    // appears to work though!
+    // libdeflate's `crc32_pclmul_template.h` and the Linux kernel's `crc-pclmul-template.S` (with
+    // `n=32` and `LSB_CRC=1`) do the same; see there for the math.
     let x = arch::_mm_xor_si128(
         arch::_mm_clmulepi64_si128(x, k3k4, 0x10),
         arch::_mm_srli_si128(x, 8),
     );
-    let x = arch::_mm_xor_si128(
-        arch::_mm_clmulepi64_si128(
-            arch::_mm_and_si128(x, arch::_mm_set_epi32(0, 0, 0, !0)),
-            arch::_mm_set_epi64x(0, K5),
-            0x00,
-        ),
-        arch::_mm_srli_si128(x, 4),
-    );
-
-    // Perform a Barrett reduction from our now 64 bits to 32 bits. The
-    // algorithm for this is described at the end of the paper, and note that
-    // this also implements the "bit reflected input" variant.
-    let pu = arch::_mm_set_epi64x(U_PRIME, P_X);
-
-    // T1(x) = ⌊(R(x) % x^32)⌋ • μ
-    let t1 = arch::_mm_clmulepi64_si128(
-        arch::_mm_and_si128(x, arch::_mm_set_epi32(0, 0, 0, !0)),
-        pu,
-        0x10,
-    );
-    // T2(x) = ⌊(T1(x) % x^32)⌋ • P(x)
-    let t2 = arch::_mm_clmulepi64_si128(
-        arch::_mm_and_si128(t1, arch::_mm_set_epi32(0, 0, 0, !0)),
-        pu,
-        0x00,
-    );
-    // We're doing the bit-reflected variant, so get the upper 32-bits of the
-    // 64-bit result instead of the lower 32-bits.
-    //
-    // C(x) = R(x) ^ T2(x) / x^32
-    !(arch::_mm_extract_epi32(arch::_mm_xor_si128(x, t2), 1) as u32)
+    let barrett = arch::_mm_set_epi64x(BARRETT_G, BARRETT_MU);
+    let t = arch::_mm_clmulepi64_si128(x, barrett, 0x00);
+    let t = arch::_mm_clmulepi64_si128(t, barrett, 0x10);
+    !(arch::_mm_extract_epi32(arch::_mm_xor_si128(x, t), 2) as u32)
 }
 
 #[inline]
