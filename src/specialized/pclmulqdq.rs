@@ -36,6 +36,35 @@ enum Kind {
     Avx512,
 }
 
+#[cfg(feature = "std")]
+impl Kind {
+    /// Encodes `kind` for `State::detect`'s cache, which reserves 0 for "not detected yet".
+    #[inline]
+    fn encode(kind: Option<Kind>) -> u8 {
+        match kind {
+            None => 1,
+            Some(Kind::Sse) => 2,
+            #[cfg(stable_vpclmulqdq)]
+            Some(Kind::Avx2) => 3,
+            #[cfg(stable_vpclmulqdq)]
+            Some(Kind::Avx512) => 4,
+        }
+    }
+
+    /// Decodes what `encode` returned.
+    #[inline]
+    fn decode(code: u8) -> Option<Kind> {
+        match code {
+            2 => Some(Kind::Sse),
+            #[cfg(stable_vpclmulqdq)]
+            3 => Some(Kind::Avx2),
+            #[cfg(stable_vpclmulqdq)]
+            4 => Some(Kind::Avx512),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct State {
     kind: Kind,
@@ -66,9 +95,30 @@ impl State {
         None
     }
 
+    /// The kernel for this CPU, if any. Finding it takes up to seven feature checks, each a load
+    /// and a branch. `Hasher::new` asks every time, and `crc32fast::hash` constructs a `Hasher` for
+    /// every call, so the answer is cached: after the first call, this is one load.
     #[cfg(feature = "std")]
     #[inline]
     fn detect() -> Option<Kind> {
+        use core::sync::atomic::{AtomicU8, Ordering};
+
+        // 0 = not detected yet, else `Kind::encode` of the result. Racing threads store the same
+        // value, so relaxed ordering is enough.
+        static CACHE: AtomicU8 = AtomicU8::new(0);
+        match CACHE.load(Ordering::Relaxed) {
+            0 => {
+                let kind = Self::detect_uncached();
+                CACHE.store(Kind::encode(kind), Ordering::Relaxed);
+                kind
+            }
+            code => Kind::decode(code),
+        }
+    }
+
+    #[cfg(feature = "std")]
+    #[cold]
+    fn detect_uncached() -> Option<Kind> {
         if is_x86_feature_detected!("pclmulqdq")
             && is_x86_feature_detected!("sse2")
             && is_x86_feature_detected!("sse4.1")
