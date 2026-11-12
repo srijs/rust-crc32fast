@@ -246,9 +246,11 @@ const BARRETT_G: i64 = 0x1db710641;
 const MIN_ZMM_BYTES: usize = 64;
 
 /// As `MIN_ZMM_BYTES`, on CPUs that downclock eagerly when 512-bit vectors are used, so that short
-/// inputs don't use them: the cutover the `AVX-512` kernel had on every CPU before.
+/// inputs don't use them. From 512 bytes they're worth it: on a Xeon 8370C (Ice Lake), 512 B to
+/// 2 KiB are 34-45% faster with 512-bit vectors than with 256-bit ones, which are slower than the
+/// old kernel at some of those lengths (+22% at 1 KiB).
 #[cfg(stable_vpclmulqdq)]
-const MIN_ZMM_BYTES_DOWNCLOCKING: usize = 2 * 1024;
+const MIN_ZMM_BYTES_DOWNCLOCKING: usize = 512;
 
 /// SSE kernel: 128-bit `PCLMULQDQ`.
 #[target_feature(
