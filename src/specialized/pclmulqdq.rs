@@ -117,10 +117,10 @@ const K1: i64 = 0x154442bd4;
 const K2: i64 = 0x1c6e41596;
 const K3: i64 = 0x1751997d0;
 const K4: i64 = 0x0ccaa009e;
-const K5: i64 = 0x163cd6124;
 
-const P_X: i64 = 0x1DB710641;
-const U_PRIME: i64 = 0x1F7011641;
+/// Barrett reduction constants: `floor(x^95 / G(x))` and `G(x)`, bit-reflected.
+const BARRETT_MU: i64 = 0xb4e5b025f7011641_u64 as i64;
+const BARRETT_G: i64 = 0x1db710641;
 
 // The wider kernels have progressively more streams to initialize and collapse. Keep their
 // crossovers conservative so short inputs do not pay that fixed cost.
@@ -151,13 +151,14 @@ unsafe fn calculate(crc: u32, mut data: &[u8]) -> u32 {
     if data.len() < 16 {
         return crate::baseline::update_short(crc, data);
     }
+    let input = data;
 
     // For 16..127 bytes a single-accumulator fold-by-1 is enough; the fold-by-4 setup below only
     // pays off once there are several 64-byte groups.
     if data.len() < MIN_FOLD_BY_4_BYTES {
         let mut x = get(&mut data);
         x = arch::_mm_xor_si128(x, arch::_mm_cvtsi32_si128(!crc as i32));
-        return reduce_128_to_crc(x, data);
+        return reduce_128_to_crc(x, input, data);
     }
 
     // Step 1: fold by 4 loop
@@ -182,7 +183,7 @@ unsafe fn calculate(crc: u32, mut data: &[u8]) -> u32 {
     x = reduce128(x, x1, k3k4);
     x = reduce128(x, x0, k3k4);
 
-    reduce_128_to_crc(x, data)
+    reduce_128_to_crc(x, input, data)
 }
 
 /// 256-bit `VPCLMULQDQ` variant: 8 streams across four `YMM` registers (two lanes each), folding
@@ -203,6 +204,7 @@ unsafe fn calculate_avx2(crc: u32, mut data: &[u8]) -> u32 {
     if data.len() < 256 {
         return calculate(crc, data);
     }
+    let input = data;
 
     // First 128 bytes as 8 streams (four YMM registers, two lanes each).
     let mut v0 = get256(&mut data);
@@ -235,7 +237,7 @@ unsafe fn calculate_avx2(crc: u32, mut data: &[u8]) -> u32 {
     x = reduce128(x, arch::_mm256_castsi256_si128(v3), k3k4);
     x = reduce128(x, arch::_mm256_extracti128_si256(v3, 1), k3k4);
 
-    reduce_128_to_crc(x, data)
+    reduce_128_to_crc(x, input, data)
 }
 
 /// 512-bit `VPCLMULQDQ` variant: 16 streams across four `ZMM` registers (four lanes each), folding
@@ -257,6 +259,7 @@ unsafe fn calculate_avx512(crc: u32, mut data: &[u8]) -> u32 {
     if data.len() < MIN_AVX512_BYTES {
         return calculate_avx2(crc, data);
     }
+    let input = data;
 
     // First 256 bytes as 16 streams (four ZMM registers, four lanes each).
     let mut v0 = get512(&mut data);
@@ -309,103 +312,69 @@ unsafe fn calculate_avx512(crc: u32, mut data: &[u8]) -> u32 {
     // A substantial remainder is faster through SSE's complete fold-by-4 kernel than through the
     // serial fold-by-1 tail below. Finalizing and restarting is valid because CRC updates compose.
     if data.len() >= MIN_FOLD_BY_4_BYTES {
-        let crc = reduce_128_to_crc(x, &[]);
+        let crc = reduce_128_to_crc(x, input, &[]);
         return calculate(crc, data);
     }
 
-    reduce_128_to_crc(x, data)
+    reduce_128_to_crc(x, input, data)
 }
 
-/// Folds any remaining 16-byte chunks into `x`, then folds a final partial (`< 16` byte) block
-/// with a byte-shift, reduces from 128 to 32 bits with a Barrett reduction, and returns the CRC.
-/// Shared by all of the fold implementations.
+/// Finishes a fold: `x` is `input` folded up to `rest`, its unconsumed tail. Folds any remaining
+/// 16-byte chunks into `x`, then a final partial (`< 16` byte) block, reduces from 128 to 32 bits
+/// with a Barrett reduction, and returns the CRC. Shared by all of the fold implementations.
+/// `input` is at least 16 bytes long.
 #[target_feature(
     enable = "pclmulqdq",
     enable = "sse2",
     enable = "sse4.1",
     enable = "ssse3"
 )]
-unsafe fn reduce_128_to_crc(mut x: arch::__m128i, mut data: &[u8]) -> u32 {
+unsafe fn reduce_128_to_crc(mut x: arch::__m128i, input: &[u8], mut rest: &[u8]) -> u32 {
     let k3k4 = arch::_mm_set_epi64x(K4, K3);
 
     // Fold by 1 over any remaining whole 16-byte blocks.
-    while data.len() >= 16 {
-        x = reduce128(x, get(&mut data), k3k4);
+    while rest.len() >= 16 {
+        x = reduce128(x, get(&mut rest), k3k4);
     }
 
-    // Fold a final partial block of `n` (1..=15) bytes. The last `n` bytes of the accumulator are
-    // shifted out (`overflow`) and folded back by 128 bits, while `x` is shifted down to make room
-    // for the `n` new bytes, which are byte-aligned into the vacated high lanes. The shuffle masks
-    // are built at runtime from the byte length, avoiding a lookup table.
-    let n = data.len();
+    // Fold a final partial block of `n` (1..=15) bytes. `x` and those bytes are `16 + n` bytes of
+    // message: the first `n` are folded forward by 128 bits, into the last 16. The last 16 are
+    // the high `16 - n` bytes of `x` followed by the final `n` bytes of the input, which one load
+    // ending at the end of `input` reads. That load overlaps bytes already folded in, which the
+    // blend drops. `input` is at least 16 bytes long, so it stays in bounds.
+    //
+    // Byte `i` of `shl` is `i + n - 16`. As a `pshufb` mask it moves the low `n` bytes of `x` to
+    // the top and zeroes the rest. `shr` is `shl` with each byte's high bit flipped: it moves the
+    // high `16 - n` bytes of `x` to the bottom, and its high bits mark the `n` bytes above them,
+    // where the blend takes the loaded bytes.
+    let n = rest.len();
     if n > 0 {
         let seq = arch::_mm_setr_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
         let shl = arch::_mm_add_epi8(seq, arch::_mm_set1_epi8(n as i8 - 16));
         let shr = arch::_mm_xor_si128(shl, arch::_mm_set1_epi8(-128));
 
-        let overflow = arch::_mm_shuffle_epi8(x, shl);
-        x = arch::_mm_shuffle_epi8(x, shr);
-
-        let (lo, hi) = partial_words(data);
-        let part = arch::_mm_set_epi64x(hi as i64, lo as i64);
-        x = arch::_mm_xor_si128(x, arch::_mm_shuffle_epi8(part, shl));
-
-        x = reduce128(overflow, x, k3k4);
+        let first = arch::_mm_shuffle_epi8(x, shl);
+        let tail =
+            arch::_mm_loadu_si128(input[input.len() - 16..].as_ptr() as *const arch::__m128i);
+        let last = arch::_mm_blendv_epi8(arch::_mm_shuffle_epi8(x, shr), tail, shr);
+        x = reduce128(first, last, k3k4);
     }
 
-    // Perform step 3, reduction from 128 bits to 64 bits. This is
-    // significantly different from the paper and basically doesn't follow it
-    // at all. It's not really clear why, but implementations of this algorithm
-    // in Chrome/Linux diverge in the same way. It is beyond me why this is
-    // different than the paper, maybe the paper has like errata or something?
-    // Unclear.
+    // Reduce the 128-bit message polynomial to its CRC: multiply by `x^32` and reduce modulo
+    // `G(x)`. Fold the low 64 bits (the high-order terms, since the bits are reflected) into the
+    // high 64, leaving 96 bits. A Barrett reduction with a 64-bit quotient estimate,
+    // `floor(x^95 / G(x))`, takes those to 32 without folding them to 64 first.
     //
-    // It's also not clear to me what's actually happening here and/or why, but
-    // algebraically what's happening is:
-    //
-    // x = (x[0:63] • K4) ^ x[64:127]           // 96 bit result
-    // x = ((x[0:31] as u64) • K5) ^ x[32:95]   // 64 bit result
-    //
-    // It's... not clear to me what's going on here. The paper itself is pretty
-    // vague on this part but definitely uses different constants at least.
-    // It's not clear to me, reading the paper, where the xor operations are
-    // happening or why things are shifting around. This implementation...
-    // appears to work though!
+    // libdeflate's `crc32_pclmul_template.h` and the Linux kernel's `crc-pclmul-template.S` (with
+    // `n=32` and `LSB_CRC=1`) do the same; see there for the math.
     let x = arch::_mm_xor_si128(
         arch::_mm_clmulepi64_si128(x, k3k4, 0x10),
         arch::_mm_srli_si128(x, 8),
     );
-    let x = arch::_mm_xor_si128(
-        arch::_mm_clmulepi64_si128(
-            arch::_mm_and_si128(x, arch::_mm_set_epi32(0, 0, 0, !0)),
-            arch::_mm_set_epi64x(0, K5),
-            0x00,
-        ),
-        arch::_mm_srli_si128(x, 4),
-    );
-
-    // Perform a Barrett reduction from our now 64 bits to 32 bits. The
-    // algorithm for this is described at the end of the paper, and note that
-    // this also implements the "bit reflected input" variant.
-    let pu = arch::_mm_set_epi64x(U_PRIME, P_X);
-
-    // T1(x) = ⌊(R(x) % x^32)⌋ • μ
-    let t1 = arch::_mm_clmulepi64_si128(
-        arch::_mm_and_si128(x, arch::_mm_set_epi32(0, 0, 0, !0)),
-        pu,
-        0x10,
-    );
-    // T2(x) = ⌊(T1(x) % x^32)⌋ • P(x)
-    let t2 = arch::_mm_clmulepi64_si128(
-        arch::_mm_and_si128(t1, arch::_mm_set_epi32(0, 0, 0, !0)),
-        pu,
-        0x00,
-    );
-    // We're doing the bit-reflected variant, so get the upper 32-bits of the
-    // 64-bit result instead of the lower 32-bits.
-    //
-    // C(x) = R(x) ^ T2(x) / x^32
-    !(arch::_mm_extract_epi32(arch::_mm_xor_si128(x, t2), 1) as u32)
+    let barrett = arch::_mm_set_epi64x(BARRETT_G, BARRETT_MU);
+    let t = arch::_mm_clmulepi64_si128(x, barrett, 0x00);
+    let t = arch::_mm_clmulepi64_si128(t, barrett, 0x10);
+    !(arch::_mm_extract_epi32(arch::_mm_xor_si128(x, t), 2) as u32)
 }
 
 #[inline]
@@ -466,29 +435,6 @@ unsafe fn get512(a: &mut &[u8]) -> arch::__m512i {
     let r = arch::_mm512_loadu_si512(a[..64].as_ptr() as *const _);
     *a = &a[64..];
     r
-}
-
-/// Packs a final partial block of 1..=15 bytes into two zero-padded little-endian words, using
-/// overlapping loads. Building it in registers avoids copying through a stack buffer, whose narrow
-/// stores the following 16-byte load cannot forward from.
-#[inline]
-fn partial_words(data: &[u8]) -> (u64, u64) {
-    let n = data.len();
-    debug_assert!(n > 0 && n < 16);
-    let v: u128 = if n >= 8 {
-        let lo = u64::from_le_bytes(data[..8].try_into().unwrap());
-        let hi = u64::from_le_bytes(data[n - 8..].try_into().unwrap());
-        lo as u128 | (hi as u128) << (8 * (n - 8))
-    } else if n >= 4 {
-        let lo = u32::from_le_bytes(data[..4].try_into().unwrap());
-        let hi = u32::from_le_bytes(data[n - 4..].try_into().unwrap());
-        lo as u128 | (hi as u128) << (8 * (n - 4))
-    } else {
-        data[0] as u128
-            | (data[n / 2] as u128) << (8 * (n / 2))
-            | (data[n - 1] as u128) << (8 * (n - 1))
-    };
-    (v as u64, (v >> 64) as u64)
 }
 
 #[cfg(test)]
