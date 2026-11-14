@@ -42,7 +42,11 @@ const fn x8n(len: u64) -> u32 {
 /// multiplies: `(x^(bits + 32), x^(bits - 32))` modulo p(x), reflected, as 33-bit values (the
 /// `K1`..`K4` of `specialized/pclmulqdq.rs`, which a test checks).
 #[cfg_attr(
-    not(all(stable_arm_crc32_intrinsics, target_arch = "aarch64")),
+    not(all(
+        stable_arm_crc32_intrinsics,
+        target_arch = "aarch64",
+        target_feature = "neon"
+    )),
     allow(dead_code)
 )]
 pub(crate) const fn fold_keys(bits: u64) -> [u64; 2] {
