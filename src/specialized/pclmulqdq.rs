@@ -60,7 +60,10 @@ impl Kind {
             3 => Some(Kind::Avx2),
             #[cfg(stable_vpclmulqdq)]
             4 => Some(Kind::Avx512),
-            _ => None,
+            _ => {
+                debug_assert_eq!(code, 1, "code from `encode` has no `decode` arm");
+                None
+            }
         }
     }
 }
