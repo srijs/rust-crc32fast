@@ -38,16 +38,22 @@ impl State {
         // from here, too: a second call through `calculate_pmull`, which can't be inlined into
         // this function, costs them 20-30%.
         unsafe {
+            #[cfg(target_feature = "neon")]
             if buf.len() >= MIN_PMULL_BYTES && has_pmull() {
-                calculate_pmull(state, buf)
-            } else {
-                calculate(state, buf)
+                return calculate_pmull(state, buf);
             }
+            calculate(state, buf)
         }
     }
 }
 
+// The `PMULL` kernel, and everything only it uses, is compiled only with `neon`. Its `aes` feature
+// enables `neon` too, which the soft-float targets refuse: their ABI passes floats and vectors in
+// integer registers, which `neon` code would not (rust-lang/rust#134375). Every other aarch64
+// target has `neon` as standard; the soft-float ones use the `crc32` chains alone.
+
 /// Whether the CPU has `PMULL` (part of the `aes` feature).
+#[cfg(target_feature = "neon")]
 #[inline]
 fn has_pmull() -> bool {
     #[cfg(feature = "std")]
@@ -156,20 +162,28 @@ unsafe fn crc_bytes(crc: u32, bytes: &[u8]) -> u32 {
     !c
 }
 
+#[cfg(target_feature = "neon")]
 use crate::combine::fold_keys;
 
+#[cfg(target_feature = "neon")]
 const FOLD_128: [u64; 2] = fold_keys(128);
+#[cfg(target_feature = "neon")]
 const FOLD_256: [u64; 2] = fold_keys(256);
+#[cfg(target_feature = "neon")]
 const FOLD_512: [u64; 2] = fold_keys(512);
+#[cfg(target_feature = "neon")]
 const FOLD_1024: [u64; 2] = fold_keys(1024);
+#[cfg(target_feature = "neon")]
 const FOLD_2048: [u64; 2] = fold_keys(2048);
 
 /// Below this, the `crc32` chains are faster than folding.
+#[cfg(target_feature = "neon")]
 const MIN_PMULL_BYTES: usize = 64;
 
 /// Folds `data` with as many 128-bit streams as pay for their setup and collapse at its length:
 /// each fold of a stream waits for the last, so more streams keep more `PMULL`s in flight. The
 /// crossovers are an Apple M4's. `data` holds at least `MIN_PMULL_BYTES`.
+#[cfg(target_feature = "neon")]
 #[target_feature(enable = "crc", enable = "aes")]
 unsafe fn calculate_pmull(crc: u32, data: &[u8]) -> u32 {
     debug_assert!(data.len() >= MIN_PMULL_BYTES);
@@ -186,6 +200,7 @@ unsafe fn calculate_pmull(crc: u32, data: &[u8]) -> u32 {
 /// the input on the way. What is left is 16 bytes whose CRC (from a zero state), followed by the
 /// last 0 to 15 bytes, is the CRC of the whole. `data` holds at least `16 * N` bytes, and `N` is
 /// 4, 8 or 16.
+#[cfg(target_feature = "neon")]
 #[target_feature(enable = "crc", enable = "aes")]
 #[inline]
 unsafe fn fold_streams<const N: usize>(crc: u32, mut data: &[u8], k: [u64; 2]) -> u32 {
@@ -237,6 +252,7 @@ unsafe fn fold_streams<const N: usize>(crc: u32, mut data: &[u8], k: [u64; 2]) -
 
 /// Advances the internal (inverted) state `c` over the last 0 to 15 bytes: at most one each of
 /// `crc32x`, `crc32w`, `crc32h` and `crc32b`, rather than a `crc32b` for each.
+#[cfg(target_feature = "neon")]
 #[target_feature(enable = "crc")]
 #[inline]
 unsafe fn crc_tail(mut c: u32, mut data: &[u8]) -> u32 {
@@ -263,6 +279,7 @@ unsafe fn crc_tail(mut c: u32, mut data: &[u8]) -> u32 {
 }
 
 /// The two fold constants as a vector, low lane first.
+#[cfg(target_feature = "neon")]
 #[inline(always)]
 unsafe fn keys(k: [u64; 2]) -> arch::uint64x2_t {
     arch::vld1q_u64(k.as_ptr())
@@ -270,6 +287,7 @@ unsafe fn keys(k: [u64; 2]) -> arch::uint64x2_t {
 
 /// Folds `a` forward by the distance `k` is for and adds it to `b`: `a.lo * k.lo + a.hi * k.hi +
 /// b`, carry-less.
+#[cfg(target_feature = "neon")]
 #[target_feature(enable = "aes")]
 #[inline]
 unsafe fn fold(a: arch::uint64x2_t, b: arch::uint64x2_t, k: arch::uint64x2_t) -> arch::uint64x2_t {
@@ -288,6 +306,7 @@ unsafe fn fold(a: arch::uint64x2_t, b: arch::uint64x2_t, k: arch::uint64x2_t) ->
 }
 
 /// Loads the next 16 bytes of `a`, little-endian lanes, and advances `a` past them.
+#[cfg(target_feature = "neon")]
 #[inline(always)]
 unsafe fn load(a: &mut &[u8]) -> arch::uint64x2_t {
     // Indexing `a[..16]` first makes a miscounted length panic instead of reading out of bounds;
@@ -324,6 +343,7 @@ mod test {
         }
         let got = match super::State::new() {
             None => "none",
+            #[cfg(target_feature = "neon")]
             Some(_) if super::has_pmull() => "pmull",
             Some(_) => "crc",
         };

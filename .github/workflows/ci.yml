@@ -127,8 +127,12 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target:
-          - wasm32-unknown-unknown
+        include:
+          - target: wasm32-unknown-unknown
+          # Soft-float: no `neon`, which the `PMULL` kernel needs
+          # (rust-lang/rust#134375), and no `std`.
+          - target: aarch64-unknown-none-softfloat
+            no_std: true
     steps:
       - uses: actions/checkout@v7
       - name: Install Rust
@@ -136,6 +140,7 @@ jobs:
       - name: Add target
         run: rustup target add ${{ matrix.target }}
       - name: Check
+        if: ${{ !matrix.no_std }}
         run: cargo check --target=${{ matrix.target }}
       - name: Check with no default features
         run: cargo check --target=${{ matrix.target }} --no-default-features
